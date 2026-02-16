@@ -72,6 +72,7 @@ export default function FeedPage() {
   const [temas, setTemas] = useState<string[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState("Todos");
+  const [editingId, setEditingId] = useState<string | null>(null);
   
   const [formData, setFormData] = useState({
     data_publicacao: "",
@@ -122,17 +123,36 @@ export default function FeedPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     
-    const { error } = await supabase
-      .from("posts_planejados")
-      .insert({
-        ...formData,
-        link_publicado: formData.link_publicado || null,
-      });
+    if (editingId) {
+      // Atualizar post existente
+      const { error } = await supabase
+        .from("posts_planejados")
+        .update({
+          ...formData,
+          link_publicado: formData.link_publicado || null,
+        })
+        .eq("id", editingId);
 
-    if (!error) {
-      await loadData();
-      setShowForm(false);
-      resetForm();
+      if (!error) {
+        await loadData();
+        setShowForm(false);
+        setEditingId(null);
+        resetForm();
+      }
+    } else {
+      // Criar novo post
+      const { error } = await supabase
+        .from("posts_planejados")
+        .insert({
+          ...formData,
+          link_publicado: formData.link_publicado || null,
+        });
+
+      if (!error) {
+        await loadData();
+        setShowForm(false);
+        resetForm();
+      }
     }
   }
 
@@ -141,6 +161,23 @@ export default function FeedPage() {
       await supabase.from("posts_planejados").delete().eq("id", id);
       loadData();
     }
+  }
+
+  function editPost(post: Post) {
+    setFormData({
+      data_publicacao: post.data_publicacao,
+      tema: post.tema,
+      objetivo: post.objetivo,
+      formato: post.formato,
+      sub_formato: post.sub_formato,
+      gancho: post.gancho,
+      conteudo: post.conteudo,
+      cta: post.cta,
+      status: post.status,
+      link_publicado: post.link_publicado || "",
+    });
+    setEditingId(post.id);
+    setShowForm(true);
   }
 
   function resetForm() {
@@ -178,7 +215,11 @@ export default function FeedPage() {
           <p className="text-slate-600 mt-1">Organize seu calendário editorial</p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            setEditingId(null);
+            resetForm();
+            setShowForm(true);
+          }}
           className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5" />
@@ -209,9 +250,12 @@ export default function FeedPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl p-8 max-w-3xl w-full my-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">Novo Post</h2>
+              <h2 className="text-2xl font-bold text-slate-900">{editingId ? "Editar Post" : "Novo Post"}</h2>
               <button
-                onClick={() => setShowForm(false)}
+                onClick={() => {
+                  setShowForm(false);
+                  setEditingId(null);
+                }}
                 className="text-slate-400 hover:text-slate-600"
               >
                 ✕
@@ -341,10 +385,43 @@ export default function FeedPage() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Status do Post
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({...formData, status: e.target.value})}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  >
+                    {STATUS_OPTIONS.map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Link Publicado (Opcional)
+                  </label>
+                  <input
+                    type="url"
+                    value={formData.link_publicado}
+                    onChange={(e) => setFormData({...formData, link_publicado: e.target.value})}
+                    placeholder="https://instagram.com/p/..."
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                  />
+                </div>
+              </div>
+
               <div className="flex space-x-4 pt-4">
                 <button
                   type="button"
-                  onClick={() => setShowForm(false)}
+                  onClick={() => {
+                    setShowForm(false);
+                    setEditingId(null);
+                  }}
                   className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
                 >
                   Cancelar
@@ -353,7 +430,7 @@ export default function FeedPage() {
                   type="submit"
                   className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg"
                 >
-                  Criar Post
+                  {editingId ? "Atualizar Post" : "Criar Post"}
                 </button>
               </div>
             </form>
@@ -371,12 +448,22 @@ export default function FeedPage() {
                 </div>
                 <h3 className="text-lg font-bold text-slate-900 mt-1">{post.tema}</h3>
               </div>
-              <button
-                onClick={() => deletePost(post.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => editPost(post)}
+                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                  title="Editar post"
+                >
+                  ✏️
+                </button>
+                <button
+                  onClick={() => deletePost(post.id)}
+                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                  title="Excluir post"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="space-y-2">
@@ -420,7 +507,11 @@ export default function FeedPage() {
           </h3>
           <p className="text-slate-500 mb-6">Crie seu primeiro post para começar</p>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              setEditingId(null);
+              resetForm();
+              setShowForm(true);
+            }}
             className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg"
           >
             <Plus className="w-5 h-5" />

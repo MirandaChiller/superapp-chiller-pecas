@@ -55,7 +55,7 @@ Escreva 5-6 parágrafos DENSOS sobre esta persona do setor HVAC/refrigeração.`
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.1-70b-versatile',
+        model: 'qwen/qwen3-32b',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }

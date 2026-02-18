@@ -4,85 +4,95 @@ export async function POST(request: NextRequest) {
   try {
     const data = await request.json();
     
-    // Chamada para API do GROQ (100% gratuita)
-    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    console.log('=== PERSONA API CHAMADA ===');
+    
+    const groqApiKey = process.env.GROQ_API_KEY;
+    
+    if (!groqApiKey) {
+      console.error('GROQ_API_KEY não encontrada!');
+      throw new Error('API Key não configurada');
+    }
+
+    const systemPrompt = `Você é especialista em criar personas B2B para refrigeração comercial/HVAC no Brasil.
+
+Crie narrativa PROFISSIONAL de 5-6 parágrafos densos (mínimo 800 palavras) sobre técnicos/instaladores HVAC.
+
+ESTRUTURA (cada parágrafo com 5-7 linhas):
+1. Identificação: Nome, idade, profissão detalhada, anos experiência, certificações, onde trabalha
+2. Dia a Dia: Rotina COM NÚMEROS (quantos clientes/dia), horários, desafios
+3. Compra: Como busca peças, quando, critérios (preço vs velocidade)
+4. Dores: Equipamento parado, falta peça, urgência, impacto reputação
+5. Valores: O que valoriza, como escolhe fornecedor
+
+Use vocabulário técnico: compressor, refrigerante R-404A, válvula expansão, condensadora.
+Contexto São Paulo. Tom profissional mas humanizado.`;
+
+    const userPrompt = `Nome: ${data.nome_ficticio || 'Roberto'}
+Idade: ${data.idade_min}-${data.idade_max} anos
+Profissão: ${data.profissao || 'Técnico Refrigerista'}
+Rotina: ${data.estilo_vida || 'Atende clientes diariamente'}
+Valores: ${data.valores || 'Qualidade e rapidez'}
+Objetivos: ${data.objetivos || 'Crescer profissionalmente'}
+Dores: ${data.dores || 'Urgência de atendimento'}
+Objeções: ${data.objecoes || 'Preço alto'}
+
+Escreva 5-6 parágrafos DENSOS sobre esta persona do setor HVAC/refrigeração.`;
+
+    console.log('Chamando GROQ API...');
+
+    const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Authorization': `Bearer ${groqApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile', // Modelo mais recente e potente
+        model: 'llama-3.1-70b-versatile',
         messages: [
-          {
-            role: 'system',
-            content: `Você é um especialista em criação de personas B2B para o setor de refrigeração comercial e HVAC no Brasil.
-
-CONTEXTO: Chiller Peças BR - distribuidora técnica de peças para refrigeração comercial/industrial em São Paulo.
-Mercado: Técnicos HVAC, instaladores, empresários do setor. 70% das decisões em menos de 2 horas (emergências).
-
-TAREFA: Criar narrativa profissional LONGA E DETALHADA (mínimo 5-6 parágrafos) sobre a persona.
-
-ESTRUTURA OBRIGATÓRIA (cada parágrafo com 6-8 linhas):
-
-1. IDENTIFICAÇÃO: Nome completo, idade, profissão detalhada, anos de experiência, certificações, onde atende, estrutura (solo/equipe).
-
-2. DIA A DIA OPERACIONAL: Rotina diária COM NÚMEROS (quantos clientes/dia, horário de trabalho, tipos de atendimento), principais desafios técnicos.
-
-3. COMPORTAMENTO DE COMPRA: Como busca peças (WhatsApp, ligação, Google), quando precisa (urgência vs planejado), critérios de decisão (preço vs velocidade), onde compra.
-
-4. DORES E PRESSÕES: Equipamento parado = prejuízo do cliente, falta de peça em estoque, fornecedor lento, atendimento não técnico, impacto na reputação.
-
-5. VALORES E FORNECEDORES: O que valoriza (rapidez, conhecimento técnico, disponibilidade), como escolhe fornecedor, expectativas, o que o frustra.
-
-REQUISITOS:
-- Use vocabulário técnico real: compressor, condensadora, evaporadora, refrigerante R-404A/R-134a, válvula de expansão, pressostato, filtro secador
-- Inclua números específicos: "atende 4-5 clientes/dia", "ticket médio R$ 800", "90% emergencial"
-- Contexto de São Paulo: zonas (leste, oeste, sul), bairros, tipo de clientes (restaurantes, açougues, supermercados)
-- Tom profissional mas humanizado: mencione família (1 frase), aspirações profissionais
-- MÍNIMO 1500 palavras na narrativa final
-
-NÃO USE: listas com marcadores, formatação excessiva, clichês de marketing`
-          },
-          {
-            role: 'user',
-            content: `Crie narrativa PROFISSIONAL e DETALHADA (5-6 parágrafos densos) para:
-
-Nome: ${data.nome_ficticio}
-Idade: ${data.idade_min}-${data.idade_max} anos  
-Profissão: ${data.profissao}
-Rotina/Estilo: ${data.estilo_vida}
-Valores: ${data.valores}
-Objetivos: ${data.objetivos}
-Dores: ${data.dores}
-Objeções: ${data.objecoes}
-
-Siga RIGOROSAMENTE a estrutura de 5 parágrafos acima. Use vocabulário técnico HVAC. Inclua NÚMEROS específicos. Mínimo 1500 palavras.`
-          }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
         ],
-        temperature: 0.9,
-        max_tokens: 2000,
+        temperature: 0.8,
+        max_tokens: 1500,
         top_p: 1,
-        stream: false,
       }),
     });
 
-    if (!response.ok) {
-      throw new Error('Erro ao gerar narrativa com GROQ');
+    if (!groqResponse.ok) {
+      const errorText = await groqResponse.text();
+      console.error('Erro GROQ:', groqResponse.status, errorText);
+      throw new Error(`GROQ API Error: ${groqResponse.status}`);
     }
 
-    const result = await response.json();
-    const narrative = result.choices[0]?.message?.content || '';
+    const result = await groqResponse.json();
+    console.log('Resposta GROQ recebida:', result);
 
+    const narrative = result.choices?.[0]?.message?.content || '';
+    
+    if (!narrative) {
+      console.error('Narrativa vazia retornada');
+      throw new Error('Narrativa vazia');
+    }
+
+    console.log('Narrativa gerada com sucesso. Tamanho:', narrative.length);
     return NextResponse.json({ narrative });
 
   } catch (error) {
-    console.error('Erro na API de persona:', error);
+    console.error('=== ERRO NA API ===');
+    console.error('Erro completo:', error);
     
-    // Fallback: Se GROQ falhar, retorna narrativa básica
-    const data = await request.json();
-    const fallbackNarrative = `${data.nome_ficticio}, com ${data.idade_min}-${data.idade_max} anos, atua como ${data.profissao}. ${data.estilo_vida}. Valoriza principalmente ${data.valores}. Seu principal objetivo é ${data.objetivos}, porém enfrenta desafios como ${data.dores}. Antes de tomar decisões de compra, costuma questionar aspectos como ${data.objecoes}.`;
+    // Fallback melhorado
+    const requestData = await request.json();
+    const fallback = `${requestData.nome_ficticio || 'Roberto'} Silva, ${requestData.idade_min || 35}-${requestData.idade_max || 45} anos, é ${requestData.profissao || 'Técnico Refrigerista'} especializado em refrigeração comercial. Atua principalmente na região metropolitana de São Paulo, atendendo restaurantes, supermercados e estabelecimentos comerciais.
+
+Seu dia a dia é marcado pela urgência: equipamentos parados representam prejuízo imediato para seus clientes. ${requestData.dores || 'Trabalha sob pressão constante, equilibrando qualidade técnica com velocidade de resposta'}. A falta de peças em estoque de fornecedores é um dos maiores gargalos operacionais.
+
+Quando precisa de peças, ${requestData.nome_ficticio || 'Roberto'} prioriza fornecedores que entendem a urgência do setor. ${requestData.valores || 'Valoriza qualidade e agilidade'} acima de tudo. Seu objetivo é ${requestData.objetivos || 'construir uma base sólida de clientes recorrentes'}.
+
+${requestData.objecoes || 'Preço alto sem justificativa técnica e demora na entrega'} são as principais barreiras que enfrenta ao escolher fornecedores. Busca parceiros que falem a linguagem técnica do setor e compreendam a realidade operacional de um técnico de campo.
+
+NOTA: Esta é uma narrativa básica gerada automaticamente devido a um erro na API de IA. Para narrativas mais detalhadas, verifique a configuração da chave GROQ_API_KEY nas variáveis de ambiente.`;
     
-    return NextResponse.json({ narrative: fallbackNarrative });
+    return NextResponse.json({ narrative: fallback });
   }
 }

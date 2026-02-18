@@ -46,7 +46,7 @@ Escreva 5-6 parágrafos DENSOS sobre esta persona do setor HVAC/refrigeração.`
 
     console.log('🌐 Chamando GROQ API...');
     console.log('URL:', 'https://api.groq.com/openai/v1/chat/completions');
-    console.log('Model:', 'llama-3.1-70b-versatile');
+    console.log('Model:', 'qwen/qwen3-32b');
 
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',

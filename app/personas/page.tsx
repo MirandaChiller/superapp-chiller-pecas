@@ -23,6 +23,7 @@ export default function PersonasPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState("");
   
   const [formData, setFormData] = useState({
     nome: "",
@@ -58,8 +59,17 @@ export default function PersonasPage() {
     setGenerating(true);
 
     try {
-      // Gerar narrativa com IA da Anthropic
+      // Etapa 1: Preparando dados
+      setGenerationStep("Preparando dados da persona...");
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // Etapa 2: Gerando narrativa com IA
+      setGenerationStep("Gerando narrativa com IA (isso pode levar até 10 segundos)...");
       const narrative = await generateNarrative(formData);
+      
+      // Etapa 3: Salvando no banco
+      setGenerationStep("Salvando persona no banco de dados...");
+      await new Promise(resolve => setTimeout(resolve, 500));
       
       const { error } = await supabase.from("personas").insert({
         nome: formData.nome,
@@ -79,20 +89,40 @@ export default function PersonasPage() {
       });
 
       if (!error) {
+        setGenerationStep("Persona criada com sucesso! ✅");
+        await new Promise(resolve => setTimeout(resolve, 800));
         await loadPersonas();
         setShowForm(false);
         resetForm();
       }
     } catch (error) {
       console.error("Erro ao criar persona:", error);
+      setGenerationStep("Erro ao criar persona. Tente novamente.");
+      await new Promise(resolve => setTimeout(resolve, 2000));
     } finally {
       setGenerating(false);
+      setGenerationStep("");
     }
   }
 
   async function generateNarrative(data: typeof formData): Promise<string> {
-    // Chamada para API da Anthropic (preparado para implementação futura)
-    return `${data.nome_ficticio}, com ${data.idade_min} - ${data.idade_max} anos, é ${data.profissao}. ${data.estilo_vida}. Valoriza ${data.valores}. Seu maior desejo é ${data.objetivos}. Porém, vive em estado de preocupação, o que justifica seus principais desafios: ${data.dores}. Geralmente, antes de comprar, apresenta objeções como ${data.objecoes}.`;
+    const response = await fetch('/api/generate-persona', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Erro na API: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    
+    if (!result.narrative) {
+      throw new Error('Narrativa vazia retornada');
+    }
+    
+    return result.narrative;
   }
 
   function resetForm() {
@@ -154,12 +184,13 @@ export default function PersonasPage() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl p-8 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-slate-900">Nova Persona</h2>
               <button
                 onClick={() => setShowForm(false)}
-                className="text-slate-400 hover:text-slate-600"
+                disabled={generating}
+                className="text-slate-400 hover:text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 ✕
               </button>
@@ -302,14 +333,15 @@ export default function PersonasPage() {
                 <button
                   type="button"
                   onClick={() => setShowForm(false)}
-                  className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors"
+                  disabled={generating}
+                  className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={generating}
-                  className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {generating ? (
                     <>
@@ -324,6 +356,19 @@ export default function PersonasPage() {
                   )}
                 </button>
               </div>
+
+              {/* Overlay de progresso */}
+              {generating && generationStep && (
+                <div className="absolute inset-0 bg-white/95 rounded-2xl flex flex-col items-center justify-center z-50">
+                  <div className="text-center space-y-4">
+                    <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <div className="space-y-2">
+                      <p className="text-lg font-semibold text-slate-900">{generationStep}</p>
+                      <p className="text-sm text-slate-600">Aguarde, isso pode levar alguns segundos...</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </form>
           </div>
         </div>

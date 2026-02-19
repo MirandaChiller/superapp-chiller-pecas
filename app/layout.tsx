@@ -1,9 +1,13 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Quicksand } from "next/font/google";
 import "./globals.css";
 import { Navigation } from "@/components/navigation";
 
-const inter = Inter({ subsets: ["latin"] });
+const quicksand = Quicksand({ 
+  subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  variable: "--font-quicksand"
+});
 
 export const metadata: Metadata = {
   title: "Superapp Chiller Peças | Marketing Intelligence",
@@ -17,8 +21,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={inter.className}>
-        <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <body className={quicksand.className}>
+        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50">
           <Navigation />
           <main className="container mx-auto px-4 py-8">
             {children}

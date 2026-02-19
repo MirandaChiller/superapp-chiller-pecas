@@ -59,7 +59,7 @@ Objeções: ${data.objecoes || 'Preço alto'}
 Escreva 5-6 parágrafos COMPLETOS E DENSOS EM PORTUGUÊS sobre esta persona brasileira do setor HVAC/refrigeração.`;
 
     console.log('🌐 Chamando GROQ API...');
-    console.log('Model: qwen/qwen-2.5-32b-instruct');
+    console.log('Model: groq/compound');
 
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -68,7 +68,7 @@ Escreva 5-6 parágrafos COMPLETOS E DENSOS EM PORTUGUÊS sobre esta persona bras
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen-2.5-32b-instruct',
+        model: 'groq/compound',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }

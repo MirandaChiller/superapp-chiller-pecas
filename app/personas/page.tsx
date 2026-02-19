@@ -159,7 +159,7 @@ export default function PersonasPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-center space-y-4">
-          <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="w-16 h-16 border-4 border-[#108bd1] border-t-transparent rounded-full animate-spin mx-auto" />
           <p className="text-slate-600">Carregando personas...</p>
         </div>
       </div>
@@ -175,7 +175,7 @@ export default function PersonasPage() {
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
+          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
         >
           <Plus className="w-5 h-5" />
           <span>Nova Persona</span>
@@ -206,7 +206,7 @@ export default function PersonasPage() {
                     type="text"
                     value={formData.nome}
                     onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                     placeholder="Ex: Técnico HVAC"
                   />
                 </div>
@@ -219,7 +219,7 @@ export default function PersonasPage() {
                     type="text"
                     value={formData.nome_ficticio}
                     onChange={(e) => setFormData({...formData, nome_ficticio: e.target.value})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                     placeholder="Ex: Roberto"
                   />
                 </div>
@@ -234,7 +234,7 @@ export default function PersonasPage() {
                     type="number"
                     value={formData.idade_min}
                     onChange={(e) => setFormData({...formData, idade_min: parseInt(e.target.value)})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                   />
                 </div>
 
@@ -246,7 +246,7 @@ export default function PersonasPage() {
                     type="number"
                     value={formData.idade_max}
                     onChange={(e) => setFormData({...formData, idade_max: parseInt(e.target.value)})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                   />
                 </div>
               </div>
@@ -259,7 +259,7 @@ export default function PersonasPage() {
                   type="text"
                   value={formData.profissao}
                   onChange={(e) => setFormData({...formData, profissao: e.target.value})}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                   placeholder="Ex: Técnico Refrigerista"
                 />
               </div>
@@ -272,7 +272,7 @@ export default function PersonasPage() {
                   value={formData.estilo_vida}
                   onChange={(e) => setFormData({...formData, estilo_vida: e.target.value})}
                   rows={2}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                   placeholder="Ex: Acorda cedo, assiste notícias, trabalha em campo..."
                 />
               </div>
@@ -285,7 +285,7 @@ export default function PersonasPage() {
                   type="text"
                   value={formData.valores}
                   onChange={(e) => setFormData({...formData, valores: e.target.value})}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                   placeholder="Ex: Verdade, transparência, qualidade"
                 />
               </div>
@@ -298,7 +298,7 @@ export default function PersonasPage() {
                   value={formData.dores}
                   onChange={(e) => setFormData({...formData, dores: e.target.value})}
                   rows={2}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                   placeholder="Ex: Profissionais não qualificados, urgências..."
                 />
               </div>
@@ -311,7 +311,7 @@ export default function PersonasPage() {
                   value={formData.objetivos}
                   onChange={(e) => setFormData({...formData, objetivos: e.target.value})}
                   rows={2}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                   placeholder="Ex: Vida de qualidade para família, reconhecimento profissional"
                 />
               </div>
@@ -324,7 +324,7 @@ export default function PersonasPage() {
                   value={formData.objecoes}
                   onChange={(e) => setFormData({...formData, objecoes: e.target.value})}
                   rows={2}
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
                   placeholder="Ex: Preços elevados, prazos longos, atendimento lento"
                 />
               </div>
@@ -341,7 +341,7 @@ export default function PersonasPage() {
                 <button
                   type="submit"
                   disabled={generating}
-                  className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 flex items-center justify-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {generating ? (
                     <>
@@ -361,7 +361,7 @@ export default function PersonasPage() {
               {generating && generationStep && (
                 <div className="absolute inset-0 bg-white/95 rounded-2xl flex flex-col items-center justify-center z-50">
                   <div className="text-center space-y-4">
-                    <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin mx-auto" />
+                    <div className="w-16 h-16 border-4 border-[#108bd1] border-t-transparent rounded-full animate-spin mx-auto" />
                     <div className="space-y-2">
                       <p className="text-lg font-semibold text-slate-900">{generationStep}</p>
                       <p className="text-sm text-slate-600">Aguarde, isso pode levar alguns segundos...</p>
@@ -377,7 +377,7 @@ export default function PersonasPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {personas.map((persona) => (
           <div key={persona.id} className="bg-white rounded-xl shadow-md border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="h-48 bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+            <div className="h-48 bg-gradient-to-br from-[#085ba7] to-[#108bd1] flex items-center justify-center">
               <Users className="w-24 h-24 text-white opacity-50" />
             </div>
             
@@ -429,7 +429,7 @@ export default function PersonasPage() {
           <p className="text-slate-500 mb-6">Crie sua primeira persona para começar</p>
           <button
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white rounded-lg hover:shadow-lg transition-all"
           >
             <Plus className="w-5 h-5" />
             <span>Criar Persona</span>

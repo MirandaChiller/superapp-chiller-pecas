@@ -10,85 +10,90 @@ interface Persona {
 }
 
 export function generatePersonaPDF(persona: Persona) {
-  const doc = new jsPDF();
+  // Criar elemento HTML temporário
+  const container = document.createElement('div');
+  container.style.width = '210mm';
+  container.style.padding = '20mm';
+  container.style.fontFamily = 'Arial, sans-serif';
+  container.style.backgroundColor = 'white';
   
-  // Header
-  doc.setFillColor(249, 115, 22); // Orange
-  doc.rect(0, 0, 210, 40, 'F');
-  
-  doc.setTextColor(255, 255, 255);
-  doc.setFontSize(24);
-  doc.setFont('helvetica', 'bold');
-  doc.text('PERSONA', 105, 20, { align: 'center' });
-  
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'normal');
-  doc.text(persona.nome, 105, 32, { align: 'center' });
-  
-  // Content
-  doc.setTextColor(0, 0, 0);
-  let yPos = 55;
-  
-  // Dados básicos
-  doc.setFontSize(12);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Dados Demográficos', 20, yPos);
-  yPos += 8;
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(10);
-  doc.text(`Idade: ${persona.idade_min} - ${persona.idade_max} anos`, 20, yPos);
-  yPos += 6;
-  doc.text(`Profissão: ${persona.profissao}`, 20, yPos);
-  yPos += 10;
-  
-  // Narrativa
-  if (persona.narrativa_gerada) {
-    doc.setFontSize(12);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Narrativa', 20, yPos);
-    yPos += 8;
+  // HTML com CSS inline para garantir UTF-8
+  container.innerHTML = `
+    <div style="background: linear-gradient(135deg, #f97316 0%, #dc2626 100%); color: white; padding: 30px; text-align: center; margin: -20mm -20mm 20px -20mm;">
+      <h1 style="margin: 0; font-size: 32px; font-weight: bold;">PERSONA</h1>
+      <h2 style="margin: 10px 0 0 0; font-size: 20px; font-weight: normal;">${persona.nome}</h2>
+    </div>
     
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    const splitText = doc.splitTextToSize(persona.narrativa_gerada, 170);
-    doc.text(splitText, 20, yPos);
-    yPos += splitText.length * 6 + 10;
-  }
-  
-  // Dados adicionais
-  if (persona.dados_demograficos) {
-    const dados = persona.dados_demograficos;
+    <div style="margin-top: 20px;">
+      <h3 style="color: #1e293b; font-size: 16px; margin-bottom: 10px; font-weight: bold;">Dados Demográficos</h3>
+      <p style="color: #475569; margin: 5px 0; font-size: 12px;"><strong>Idade:</strong> ${persona.idade_min} - ${persona.idade_max} anos</p>
+      <p style="color: #475569; margin: 5px 0; font-size: 12px;"><strong>Profissão:</strong> ${persona.profissao}</p>
+    </div>
     
-    if (dados.valores) {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Valores', 20, yPos);
-      yPos += 8;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      const splitText = doc.splitTextToSize(dados.valores, 170);
-      doc.text(splitText, 20, yPos);
-      yPos += splitText.length * 6 + 10;
-    }
+    ${persona.narrativa_gerada ? `
+      <div style="margin-top: 20px;">
+        <h3 style="color: #1e293b; font-size: 16px; margin-bottom: 10px; font-weight: bold;">Narrativa</h3>
+        <p style="color: #475569; line-height: 1.6; text-align: justify; font-size: 11px; white-space: pre-wrap;">${persona.narrativa_gerada}</p>
+      </div>
+    ` : ''}
     
-    if (dados.dores) {
-      doc.setFontSize(12);
-      doc.setFont('helvetica', 'bold');
-      doc.text('Dores e Desafios', 20, yPos);
-      yPos += 8;
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(10);
-      const splitText = doc.splitTextToSize(dados.dores, 170);
-      doc.text(splitText, 20, yPos);
-      yPos += splitText.length * 6 + 10;
-    }
-  }
+    ${persona.dados_demograficos?.valores ? `
+      <div style="margin-top: 20px;">
+        <h3 style="color: #1e293b; font-size: 16px; margin-bottom: 10px; font-weight: bold;">Valores</h3>
+        <p style="color: #475569; font-size: 11px;">${persona.dados_demograficos.valores}</p>
+      </div>
+    ` : ''}
+    
+    ${persona.dados_demograficos?.dores ? `
+      <div style="margin-top: 20px;">
+        <h3 style="color: #1e293b; font-size: 16px; margin-bottom: 10px; font-weight: bold;">Dores e Desafios</h3>
+        <p style="color: #475569; font-size: 11px;">${persona.dados_demograficos.dores}</p>
+      </div>
+    ` : ''}
+    
+    <div style="text-align: center; color: #94a3b8; font-size: 10px; margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0;">
+      Gerado por Superapp Chiller Peças
+    </div>
+  `;
   
-  // Footer
-  doc.setFontSize(8);
-  doc.setTextColor(150, 150, 150);
-  doc.text('Gerado por Superapp Chiller Peças', 105, 285, { align: 'center' });
+  // Adicionar ao DOM temporariamente
+  container.style.position = 'absolute';
+  container.style.left = '-9999px';
+  document.body.appendChild(container);
   
-  doc.save(`persona-${persona.nome.toLowerCase().replace(/\s/g, '-')}.pdf`);
+  // Usar html2canvas + jsPDF para converter
+  import('html2canvas').then((html2canvas) => {
+    html2canvas.default(container, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff'
+    }).then((canvas) => {
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      const imgWidth = 210;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      
+      let heightLeft = imgHeight;
+      let position = 0;
+      
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= 297;
+      
+      // Se precisar de múltiplas páginas
+      while (heightLeft > 0) {
+        position = heightLeft - imgHeight;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+        heightLeft -= 297;
+      }
+      
+      // Remover elemento temporário
+      document.body.removeChild(container);
+      
+      // Download
+      pdf.save(`persona-${persona.nome.toLowerCase().replace(/\s/g, '-')}.pdf`);
+    });
+  });
 }

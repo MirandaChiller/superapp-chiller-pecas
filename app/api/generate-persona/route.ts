@@ -13,27 +13,41 @@ export async function POST(request: NextRequest) {
     
     if (!groqApiKey) {
       console.error('❌ GROQ_API_KEY NÃO ENCONTRADA!');
-      console.error('Env vars disponíveis:', Object.keys(process.env));
       throw new Error('API Key não configurada');
     }
     
     console.log('✅ GROQ_API_KEY encontrada! Length:', groqApiKey.length);
 
-    const systemPrompt = `Você é especialista em criar personas B2B para refrigeração comercial/HVAC no Brasil.
+    const systemPrompt = `VOCÊ DEVE RESPONDER EXCLUSIVAMENTE EM PORTUGUÊS BRASILEIRO. NÃO USE INGLÊS EM NENHUMA PARTE DA RESPOSTA.
 
-Crie narrativa PROFISSIONAL de 5-6 parágrafos densos (mínimo 800 palavras) sobre técnicos/instaladores HVAC.
+Você é especialista em criar personas B2B para refrigeração comercial/HVAC no Brasil.
 
-ESTRUTURA (cada parágrafo com 5-7 linhas):
-1. Identificação: Nome, idade, profissão detalhada, anos experiência, certificações, onde trabalha
-2. Dia a Dia: Rotina COM NÚMEROS (quantos clientes/dia), horários, desafios
-3. Compra: Como busca peças, quando, critérios (preço vs velocidade)
-4. Dores: Equipamento parado, falta peça, urgência, impacto reputação
-5. Valores: O que valoriza, como escolhe fornecedor
+TAREFA: Criar narrativa PROFISSIONAL de 5-6 parágrafos densos (mínimo 800 palavras) sobre técnicos/instaladores HVAC BRASILEIROS.
 
-Use vocabulário técnico: compressor, refrigerante R-404A, válvula expansão, condensadora.
-Contexto São Paulo. Tom profissional mas humanizado.`;
+ESTRUTURA OBRIGATÓRIA (cada parágrafo com 5-7 linhas):
+1. Identificação: Nome completo brasileiro, idade, profissão detalhada, anos experiência, certificações brasileiras (NR-10, ANREDE), região de São Paulo onde trabalha, estrutura (solo/equipe)
 
-    const userPrompt = `Nome: ${data.nome_ficticio || 'Roberto'}
+2. Dia a Dia: Rotina diária COM NÚMEROS ESPECÍFICOS (quantos clientes/dia, horário inicial de trabalho, tipos de atendimento), principais desafios técnicos do mercado brasileiro
+
+3. Comportamento de Compra: Como busca peças no Brasil (WhatsApp, ligação, Google), quando precisa (urgência vs planejado), critérios de decisão (preço vs velocidade), fornecedores que usa
+
+4. Dores e Pressões: Equipamento parado = prejuízo do cliente, falta de peça em estoque, fornecedor lento, atendimento não técnico, impacto na reputação profissional
+
+5. Valores Profissionais: O que valoriza (rapidez, conhecimento técnico, disponibilidade), como escolhe fornecedor, expectativas, relacionamento com clientes
+
+REQUISITOS OBRIGATÓRIOS:
+- Use vocabulário técnico HVAC: compressor, condensadora, evaporadora, refrigerante R-404A/R-134a, válvula de expansão, filtro secador
+- Inclua números: "atende 4-5 clientes/dia", "ticket médio R$ 800", "90% emergencial"
+- Contexto São Paulo: zonas (leste, oeste, sul), bairros, clientes (restaurantes, açougues, supermercados)
+- Tom profissional mas humanizado: mencione família brevemente, aspirações profissionais
+- Escreva parágrafos DENSOS e COMPLETOS
+
+CRÍTICO: TODA A RESPOSTA DEVE SER EM PORTUGUÊS BRASILEIRO. SEM INGLÊS.`;
+
+    const userPrompt = `RESPONDA APENAS EM PORTUGUÊS BRASILEIRO.
+
+Dados da persona:
+Nome: ${data.nome_ficticio || 'Roberto'}
 Idade: ${data.idade_min}-${data.idade_max} anos
 Profissão: ${data.profissao || 'Técnico Refrigerista'}
 Rotina: ${data.estilo_vida || 'Atende clientes diariamente'}
@@ -42,11 +56,10 @@ Objetivos: ${data.objetivos || 'Crescer profissionalmente'}
 Dores: ${data.dores || 'Urgência de atendimento'}
 Objeções: ${data.objecoes || 'Preço alto'}
 
-Escreva 5-6 parágrafos DENSOS sobre esta persona do setor HVAC/refrigeração.`;
+Escreva 5-6 parágrafos COMPLETOS E DENSOS EM PORTUGUÊS sobre esta persona brasileira do setor HVAC/refrigeração.`;
 
     console.log('🌐 Chamando GROQ API...');
-    console.log('URL:', 'https://api.groq.com/openai/v1/chat/completions');
-    console.log('Model:', 'qwen/qwen3-32b');
+    console.log('Model: qwen/qwen-2.5-32b-instruct');
 
     const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
@@ -55,30 +68,28 @@ Escreva 5-6 parágrafos DENSOS sobre esta persona do setor HVAC/refrigeração.`
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'qwen/qwen3-32b',
+        model: 'qwen/qwen-2.5-32b-instruct',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
         ],
-        temperature: 0.8,
-        max_tokens: 1500,
-        top_p: 1,
+        temperature: 0.7,
+        max_tokens: 2000,
+        top_p: 0.95,
       }),
     });
 
     console.log('📡 GROQ Response Status:', groqResponse.status);
-    console.log('📡 GROQ Response OK:', groqResponse.ok);
 
     if (!groqResponse.ok) {
       const errorText = await groqResponse.text();
       console.error('❌ Erro GROQ:', groqResponse.status);
       console.error('❌ Erro body:', errorText);
-      throw new Error(`GROQ API Error: ${groqResponse.status} - ${errorText}`);
+      throw new Error(`GROQ API Error: ${groqResponse.status}`);
     }
 
     const result = await groqResponse.json();
     console.log('✅ Resposta GROQ recebida');
-    console.log('Choices length:', result.choices?.length);
 
     const narrative = result.choices?.[0]?.message?.content || '';
     
@@ -94,11 +105,9 @@ Escreva 5-6 parágrafos DENSOS sobre esta persona do setor HVAC/refrigeração.`
 
   } catch (error: any) {
     console.error('💥 === ERRO CAPTURADO ===');
-    console.error('Tipo do erro:', error.constructor.name);
     console.error('Mensagem:', error.message);
-    console.error('Stack:', error.stack);
     
-    // Fallback melhorado
+    // Fallback melhorado em português
     let requestData;
     try {
       requestData = await request.json();
@@ -114,9 +123,9 @@ Quando precisa de peças, ${requestData.nome_ficticio || 'Roberto'} prioriza for
 
 ${requestData.objecoes || 'Preço alto sem justificativa técnica e demora na entrega'} são as principais barreiras que enfrenta ao escolher fornecedores. Busca parceiros que falem a linguagem técnica do setor e compreendam a realidade operacional de um técnico de campo.
 
-NOTA: Esta é uma narrativa básica gerada automaticamente devido a um erro na API de IA (${error.message}). Para narrativas mais detalhadas, verifique os logs da aplicação.`;
+NOTA: Esta é uma narrativa básica gerada automaticamente devido a um erro na API (${error.message}).`;
     
-    console.log('📝 Retornando fallback. Tamanho:', fallback.length);
+    console.log('📝 Retornando fallback em português');
     return NextResponse.json({ narrative: fallback });
   }
 }

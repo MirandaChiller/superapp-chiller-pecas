@@ -3,6 +3,13 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Cores Chiller Peças */
+  --chiller-azure: #085ba7;
+  --chiller-blue: #108bd1;
+  --chiller-orange: #ff901c;
+  --chiller-white: #ffffff;
+  --chiller-gray: #efefef;
 }
 
 @theme inline {
@@ -10,6 +17,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Custom colors */
+  --color-chiller-azure: #085ba7;
+  --color-chiller-blue: #108bd1;
+  --color-chiller-orange: #ff901c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -22,5 +34,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Quicksand', Arial, Helvetica, sans-serif;
 }

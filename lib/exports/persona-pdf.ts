@@ -19,9 +19,9 @@ export function generatePersonaPDF(persona: Persona) {
   
   // HTML com CSS inline para garantir UTF-8
   container.innerHTML = `
-    <div style="background: linear-gradient(135deg, #f97316 0%, #dc2626 100%); color: white; padding: 30px; text-align: center; margin: -20mm -20mm 20px -20mm;">
-      <h1 style="margin: 0; font-size: 32px; font-weight: bold;">PERSONA</h1>
-      <h2 style="margin: 10px 0 0 0; font-size: 20px; font-weight: normal;">${persona.nome}</h2>
+    <div style="background: linear-gradient(135deg, #085ba7 0%, #108bd1 100%); color: white; padding: 30px; text-align: center; margin: -20mm -20mm 20px -20mm;">
+      <h1 style="margin: 0; font-size: 32px; font-weight: bold; font-family: 'Quicksand', Arial, sans-serif;">PERSONA</h1>
+      <h2 style="margin: 10px 0 0 0; font-size: 20px; font-weight: normal; font-family: 'Quicksand', Arial, sans-serif;">${persona.nome}</h2>
     </div>
     
     <div style="margin-top: 20px;">

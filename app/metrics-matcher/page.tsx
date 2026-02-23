@@ -159,7 +159,7 @@ export default function MetricsMatcherPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 border-4 border-[#ff901c] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -177,7 +177,7 @@ export default function MetricsMatcherPage() {
             setEditingId(null);
             setShowForm(true);
           }}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
+          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5" />
           <span>Nova Análise</span>
@@ -248,7 +248,7 @@ export default function MetricsMatcherPage() {
                                 type="checkbox"
                                 checked={formData.checklist_itens[globalIndex]?.checked || false}
                                 onChange={(e) => updateChecklistItem(globalIndex, "checked", e.target.checked)}
-                                className="mt-1 w-5 h-5 text-orange-600 rounded focus:ring-orange-500"
+                                className="mt-1 w-5 h-5 text-[#ff901c] rounded focus:ring-orange-500"
                               />
                               <div className="flex-1">
                                 <label className="text-sm text-slate-700">{item}</label>
@@ -282,7 +282,7 @@ export default function MetricsMatcherPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
                 >
                   {editingId ? "Atualizar" : "Salvar"} Análise
                 </button>
@@ -310,7 +310,7 @@ export default function MetricsMatcherPage() {
                 <div className="flex space-x-2">
                   <button
                     onClick={() => editCampanha(campanha)}
-                    className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg"
+                    className="p-2 text-[#ff901c] hover:bg-orange-50 rounded-lg"
                   >
                     ✏️
                   </button>
@@ -358,7 +358,7 @@ export default function MetricsMatcherPage() {
           <p className="text-slate-500 mb-6">Crie sua primeira análise de campanha</p>
           <button
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg"
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
           >
             <Plus className="w-5 h-5" />
             <span>Nova Análise</span>

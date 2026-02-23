@@ -202,7 +202,7 @@ export default function FeedPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 border-4 border-[#ff901c] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -220,7 +220,7 @@ export default function FeedPage() {
             resetForm();
             setShowForm(true);
           }}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
+          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5" />
           <span>Novo Post</span>
@@ -236,7 +236,7 @@ export default function FeedPage() {
               onClick={() => setFiltroStatus(status)}
               className={`px-4 py-2 rounded-lg font-medium transition-all ${
                 filtroStatus === status
-                  ? "bg-orange-500 text-white"
+                  ? "bg-[#ff901c] text-white"
                   : "bg-slate-100 text-slate-700 hover:bg-slate-200"
               }`}
             >
@@ -428,7 +428,7 @@ export default function FeedPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
                 >
                   {editingId ? "Atualizar Post" : "Criar Post"}
                 </button>
@@ -451,7 +451,7 @@ export default function FeedPage() {
               <div className="flex space-x-2">
                 <button
                   onClick={() => editPost(post)}
-                  className="p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition-colors"
+                  className="p-2 text-[#ff901c] hover:bg-orange-50 rounded-lg transition-colors"
                   title="Editar post"
                 >
                   ✏️
@@ -484,7 +484,7 @@ export default function FeedPage() {
             <p className="text-sm text-slate-600 line-clamp-3">{post.conteudo}</p>
 
             {post.cta && (
-              <p className="text-sm text-orange-600 font-medium">CTA: {post.cta}</p>
+              <p className="text-sm text-[#ff901c] font-medium">CTA: {post.cta}</p>
             )}
 
             <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
@@ -512,7 +512,7 @@ export default function FeedPage() {
               resetForm();
               setShowForm(true);
             }}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg"
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
           >
             <Plus className="w-5 h-5" />
             <span>Criar Post</span>

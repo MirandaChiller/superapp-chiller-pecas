@@ -145,7 +145,7 @@ export default function IndicadoresPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 border-4 border-[#ff901c] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -165,7 +165,7 @@ export default function IndicadoresPage() {
             }
             setShowForm(true);
           }}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
+          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5" />
           <span>Nova Métrica</span>
@@ -341,7 +341,7 @@ export default function IndicadoresPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg"
+                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
                 >
                   Salvar Métrica
                 </button>
@@ -363,7 +363,7 @@ export default function IndicadoresPage() {
                   <div className={`px-3 py-1 rounded-full text-xs font-bold border-2 ${getCategoriaColor(metrica.categoria)}`}>
                     {metrica.categoria}
                   </div>
-                  <div className="text-2xl font-bold text-orange-600">
+                  <div className="text-2xl font-bold text-[#ff901c]">
                     {Math.round(metrica.score)}
                   </div>
                 </div>
@@ -422,7 +422,7 @@ export default function IndicadoresPage() {
                   <div className="text-xs text-slate-600">Seg. (Pago)</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-lg font-bold text-orange-600">
+                  <div className="text-lg font-bold text-[#ff901c]">
                     {metrica.custo_por_seguidor ? `R$ ${metrica.custo_por_seguidor.toFixed(2)}` : "-"}
                   </div>
                   <div className="text-xs text-slate-600">Custo/Seg.</div>
@@ -445,7 +445,7 @@ export default function IndicadoresPage() {
           {posts.length > 0 && (
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
             >
               <Plus className="w-5 h-5" />
               <span>Adicionar Métrica</span>

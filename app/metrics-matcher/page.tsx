@@ -2,77 +2,77 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Target, Plus, Save, Trash2, Download } from "lucide-react";
+import { Plus, X, Edit, Trash2, ChevronDown, ChevronUp, Calendar, User, Flag, Tag, GripVertical } from "lucide-react";
 
-const CHECKLIST_ITEMS = [
-  {
-    categoria: "Desempenho Geral",
-    itens: [
-      "Taxa de conversão acima de 2%",
-      "CPC dentro do orçamento planejado",
-      "ROAS (Return on Ad Spend) acima de 3",
-      "Frequência de exibição entre 2-3",
-    ],
-  },
-  {
-    categoria: "Alcance & Visibilidade",
-    itens: [
-      "Alcance crescendo semana a semana",
-      "Impressões distribuídas ao longo do dia",
-      "Público-alvo sendo atingido (>80%)",
-      "Segmentação por interesses funcionando",
-    ],
-  },
-  {
-    categoria: "Engajamento",
-    itens: [
-      "Taxa de cliques (CTR) acima de 1%",
-      "Tempo médio de visualização >50%",
-      "Comentários positivos > comentários negativos",
-      "Compartilhamentos acontecendo organicamente",
-    ],
-  },
-  {
-    categoria: "Vídeo (se aplicável)",
-    itens: [
-      "ThruPlay rate acima de 25%",
-      "Retenção nos primeiros 3 segundos >60%",
-      "Vídeos de até 15 segundos performando melhor",
-      "Call-to-action claro nos primeiros frames",
-    ],
-  },
-];
-
-interface ChecklistItem {
-  item: string;
-  checked: boolean;
-  observacao: string;
-}
-
-interface Campanha {
+interface Column {
   id: string;
   nome: string;
-  data_analise: string;
-  checklist_itens: ChecklistItem[];
-  created_at: string;
+  cor: string;
+  ordem: number;
 }
 
-export default function MetricsMatcherPage() {
+interface Task {
+  id: string;
+  column_id: string;
+  titulo: string;
+  descricao: string;
+  responsavel: string;
+  data_vencimento: string;
+  prioridade: string;
+  ordem: number;
+  tags?: Tag[];
+}
+
+interface Tag {
+  id: string;
+  nome: string;
+  cor: string;
+}
+
+const TEAM_MEMBERS = [
+  "Miranda Chiller",
+  "João Silva",
+  "Maria Santos",
+  "Pedro Costa",
+  "Equipe Marketing",
+  "Não atribuído"
+];
+
+const PRIORIDADES = [
+  { valor: "Urgente", cor: "#dc2626", emoji: "🔴" },
+  { valor: "Alta", cor: "#ff901c", emoji: "🟠" },
+  { valor: "Média", cor: "#fbbf24", emoji: "🟡" },
+  { valor: "Baixa", cor: "#10b981", emoji: "🟢" }
+];
+
+export default function TasksPage() {
+  const [columns, setColumns] = useState<Column[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [campanhas, setCampanhas] = useState<Campanha[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   
-  const [formData, setFormData] = useState({
-    nome: "",
-    data_analise: new Date().toISOString().split('T')[0],
-    checklist_itens: CHECKLIST_ITEMS.flatMap(cat => 
-      cat.itens.map(item => ({
-        item: `${cat.categoria}: ${item}`,
-        checked: false,
-        observacao: "",
-      }))
-    ),
+  // Modals
+  const [showColumnModal, setShowColumnModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [editingColumn, setEditingColumn] = useState<Column | null>(null);
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [selectedColumnId, setSelectedColumnId] = useState("");
+  
+  // Filtros
+  const [filterResponsavel, setFilterResponsavel] = useState("Todos");
+  const [filterPrioridade, setFilterPrioridade] = useState("Todas");
+  const [filterTag, setFilterTag] = useState("Todas");
+  
+  // Forms
+  const [columnForm, setColumnForm] = useState({ nome: "", cor: "#085ba7" });
+  const [taskForm, setTaskForm] = useState({
+    titulo: "",
+    descricao: "",
+    responsavel: "Não atribuído",
+    data_vencimento: "",
+    prioridade: "Média",
+    tag_ids: [] as string[]
   });
 
   useEffect(() => {
@@ -80,289 +80,592 @@ export default function MetricsMatcherPage() {
   }, []);
 
   async function loadData() {
-    const { data } = await supabase
-      .from("campanhas_trafego")
-      .select("*")
-      .order("data_analise", { ascending: false });
+    setLoading(true);
     
-    if (data) {
-      setCampanhas(data);
+    // Carregar colunas
+    const { data: colsData } = await supabase
+      .from("kanban_columns")
+      .select("*")
+      .order("ordem");
+    
+    if (colsData) setColumns(colsData);
+    
+    // Carregar tarefas
+    const { data: tasksData } = await supabase
+      .from("kanban_tasks")
+      .select(`
+        *,
+        kanban_task_tags (
+          kanban_tags (*)
+        )
+      `)
+      .order("ordem");
+    
+    if (tasksData) {
+      const formatted = tasksData.map(t => ({
+        ...t,
+        tags: t.kanban_task_tags?.map((tt: any) => tt.kanban_tags) || []
+      }));
+      setTasks(formatted);
     }
+    
+    // Carregar tags
+    const { data: tagsData } = await supabase
+      .from("kanban_tags")
+      .select("*")
+      .order("nome");
+    
+    if (tagsData) setTags(tagsData);
+    
     setLoading(false);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  // CRUD Colunas
+  async function saveColumn() {
+    if (!columnForm.nome) return;
     
-    if (editingId) {
-      const { error } = await supabase
-        .from("campanhas_trafego")
-        .update(formData)
-        .eq("id", editingId);
+    if (editingColumn) {
+      await supabase
+        .from("kanban_columns")
+        .update(columnForm)
+        .eq("id", editingColumn.id);
+    } else {
+      const maxOrdem = Math.max(...columns.map(c => c.ordem), 0);
+      await supabase
+        .from("kanban_columns")
+        .insert({ ...columnForm, ordem: maxOrdem + 1 });
+    }
+    
+    setShowColumnModal(false);
+    setEditingColumn(null);
+    setColumnForm({ nome: "", cor: "#085ba7" });
+    loadData();
+  }
+
+  async function deleteColumn(id: string) {
+    if (!confirm("Excluir esta coluna e todas suas tarefas?")) return;
+    await supabase.from("kanban_columns").delete().eq("id", id);
+    loadData();
+  }
+
+  // CRUD Tarefas
+  async function saveTask() {
+    if (!taskForm.titulo || !selectedColumnId) return;
+    
+    if (editingTask) {
+      const { data: updated } = await supabase
+        .from("kanban_tasks")
+        .update({
+          titulo: taskForm.titulo,
+          descricao: taskForm.descricao,
+          responsavel: taskForm.responsavel,
+          data_vencimento: taskForm.data_vencimento || null,
+          prioridade: taskForm.prioridade
+        })
+        .eq("id", editingTask.id)
+        .select()
+        .single();
       
-      if (!error) {
-        await loadData();
-        setShowForm(false);
-        setEditingId(null);
-        resetForm();
+      if (updated) {
+        await supabase.from("kanban_task_tags").delete().eq("task_id", updated.id);
+        if (taskForm.tag_ids.length > 0) {
+          await supabase.from("kanban_task_tags").insert(
+            taskForm.tag_ids.map(tag_id => ({ task_id: updated.id, tag_id }))
+          );
+        }
       }
     } else {
-      const { error } = await supabase
-        .from("campanhas_trafego")
-        .insert(formData);
-
-      if (!error) {
-        await loadData();
-        setShowForm(false);
-        resetForm();
+      const maxOrdem = Math.max(
+        ...tasks.filter(t => t.column_id === selectedColumnId).map(t => t.ordem),
+        -1
+      );
+      
+      const { data: newTask } = await supabase
+        .from("kanban_tasks")
+        .insert({
+          column_id: selectedColumnId,
+          titulo: taskForm.titulo,
+          descricao: taskForm.descricao,
+          responsavel: taskForm.responsavel,
+          data_vencimento: taskForm.data_vencimento || null,
+          prioridade: taskForm.prioridade,
+          ordem: maxOrdem + 1
+        })
+        .select()
+        .single();
+      
+      if (newTask && taskForm.tag_ids.length > 0) {
+        await supabase.from("kanban_task_tags").insert(
+          taskForm.tag_ids.map(tag_id => ({ task_id: newTask.id, tag_id }))
+        );
       }
     }
+    
+    setShowTaskModal(false);
+    setEditingTask(null);
+    resetTaskForm();
+    loadData();
   }
 
-  async function deleteCampanha(id: string) {
-    if (confirm("Deseja excluir esta análise?")) {
-      await supabase.from("campanhas_trafego").delete().eq("id", id);
-      loadData();
-    }
+  async function deleteTask(id: string) {
+    if (!confirm("Excluir esta tarefa?")) return;
+    await supabase.from("kanban_tasks").delete().eq("id", id);
+    loadData();
   }
 
-  function editCampanha(campanha: Campanha) {
-    setFormData({
-      nome: campanha.nome,
-      data_analise: campanha.data_analise,
-      checklist_itens: campanha.checklist_itens,
+  async function moveTask(taskId: string, newColumnId: string) {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task || task.column_id === newColumnId) return;
+    
+    const maxOrdem = Math.max(
+      ...tasks.filter(t => t.column_id === newColumnId).map(t => t.ordem),
+      -1
+    );
+    
+    await supabase
+      .from("kanban_tasks")
+      .update({ column_id: newColumnId, ordem: maxOrdem + 1 })
+      .eq("id", taskId);
+    
+    loadData();
+  }
+
+  function openEditTask(task: Task) {
+    setTaskForm({
+      titulo: task.titulo,
+      descricao: task.descricao || "",
+      responsavel: task.responsavel || "Não atribuído",
+      data_vencimento: task.data_vencimento || "",
+      prioridade: task.prioridade || "Média",
+      tag_ids: task.tags?.map(t => t.id) || []
     });
-    setEditingId(campanha.id);
-    setShowForm(true);
+    setSelectedColumnId(task.column_id);
+    setEditingTask(task);
+    setShowTaskModal(true);
   }
 
-  function resetForm() {
-    setFormData({
-      nome: "",
-      data_analise: new Date().toISOString().split('T')[0],
-      checklist_itens: CHECKLIST_ITEMS.flatMap(cat => 
-        cat.itens.map(item => ({
-          item: `${cat.categoria}: ${item}`,
-          checked: false,
-          observacao: "",
-        }))
-      ),
+  function openNewTask(columnId: string) {
+    resetTaskForm();
+    setSelectedColumnId(columnId);
+    setShowTaskModal(true);
+  }
+
+  function resetTaskForm() {
+    setTaskForm({
+      titulo: "",
+      descricao: "",
+      responsavel: "Não atribuído",
+      data_vencimento: "",
+      prioridade: "Média",
+      tag_ids: []
     });
   }
 
-  function updateChecklistItem(index: number, field: keyof ChecklistItem, value: boolean | string) {
-    const newItems = [...formData.checklist_itens];
-    newItems[index] = { ...newItems[index], [field]: value };
-    setFormData({ ...formData, checklist_itens: newItems });
+  function toggleExpand(taskId: string) {
+    setExpandedTasks(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(taskId)) {
+        newSet.delete(taskId);
+      } else {
+        newSet.add(taskId);
+      }
+      return newSet;
+    });
+  }
+
+  function getFilteredTasks(columnId: string) {
+    return tasks
+      .filter(t => t.column_id === columnId)
+      .filter(t => filterResponsavel === "Todos" || t.responsavel === filterResponsavel)
+      .filter(t => filterPrioridade === "Todas" || t.prioridade === filterPrioridade)
+      .filter(t => {
+        if (filterTag === "Todas") return true;
+        return t.tags?.some(tag => tag.nome === filterTag);
+      })
+      .sort((a, b) => a.ordem - b.ordem);
+  }
+
+  function getTaskPriorityColor(prioridade: string) {
+    return PRIORIDADES.find(p => p.valor === prioridade)?.cor || "#94a3b8";
+  }
+
+  function isTaskOverdue(dataVencimento: string) {
+    if (!dataVencimento) return false;
+    return new Date(dataVencimento) < new Date();
   }
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 border-4 border-[#ff901c] border-t-transparent rounded-full animate-spin" />
+      <div className="flex items-center justify-center h-96">
+        <div className="w-12 h-12 border-4 border-[#108bd1] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Magic Metrics Matcher</h1>
-          <p className="text-slate-600 mt-1">Checklist de otimização para tráfego pago</p>
+          <h1 className="text-3xl font-bold text-slate-900">Gerenciamento de Tarefas</h1>
+          <p className="text-slate-600">Organize e acompanhe as tarefas da equipe</p>
         </div>
         <button
           onClick={() => {
-            resetForm();
-            setEditingId(null);
-            setShowForm(true);
+            setEditingColumn(null);
+            setColumnForm({ nome: "", cor: "#085ba7" });
+            setShowColumnModal(true);
           }}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all"
+          className="px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center space-x-2"
         >
           <Plus className="w-5 h-5" />
-          <span>Nova Análise</span>
+          <span>Nova Coluna</span>
         </button>
       </div>
 
-      {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-4xl w-full my-8 max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">
-                {editingId ? "Editar Análise" : "Nova Análise"}
-              </h2>
-              <button
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                }}
-                className="text-slate-400 hover:text-slate-600"
+      {/* Filtros */}
+      <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="text-sm font-semibold text-slate-700 mb-1 block">Responsável</label>
+            <select
+              value={filterResponsavel}
+              onChange={(e) => setFilterResponsavel(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+            >
+              <option>Todos</option>
+              {TEAM_MEMBERS.map(m => <option key={m}>{m}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-slate-700 mb-1 block">Prioridade</label>
+            <select
+              value={filterPrioridade}
+              onChange={(e) => setFilterPrioridade(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+            >
+              <option>Todas</option>
+              {PRIORIDADES.map(p => <option key={p.valor}>{p.valor}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="text-sm font-semibold text-slate-700 mb-1 block">Tag</label>
+            <select
+              value={filterTag}
+              onChange={(e) => setFilterTag(e.target.value)}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+            >
+              <option>Todas</option>
+              {tags.map(t => <option key={t.id}>{t.nome}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Kanban Board */}
+      <div className="overflow-x-auto pb-4">
+        <div className="flex space-x-4 min-w-max">
+          {columns.map(column => {
+            const columnTasks = getFilteredTasks(column.id);
+            
+            return (
+              <div
+                key={column.id}
+                className="w-80 flex-shrink-0 bg-slate-50 rounded-xl"
+                style={{ borderTop: `4px solid ${column.cor}` }}
               >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Nome da Campanha
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nome}
-                    onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                    required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                    placeholder="Ex: Campanha Black Friday 2024"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Data da Análise
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.data_analise}
-                    onChange={(e) => setFormData({...formData, data_analise: e.target.value})}
-                    required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                {CHECKLIST_ITEMS.map((categoria, catIndex) => (
-                  <div key={catIndex} className="border border-slate-200 rounded-lg p-4">
-                    <h3 className="text-lg font-semibold text-slate-900 mb-4">{categoria.categoria}</h3>
-                    <div className="space-y-3">
-                      {categoria.itens.map((item, itemIndex) => {
-                        const globalIndex = CHECKLIST_ITEMS.slice(0, catIndex)
-                          .reduce((sum, cat) => sum + cat.itens.length, 0) + itemIndex;
-                        
-                        return (
-                          <div key={itemIndex} className="space-y-2">
-                            <div className="flex items-start space-x-3">
-                              <input
-                                type="checkbox"
-                                checked={formData.checklist_itens[globalIndex]?.checked || false}
-                                onChange={(e) => updateChecklistItem(globalIndex, "checked", e.target.checked)}
-                                className="mt-1 w-5 h-5 text-[#ff901c] rounded focus:ring-orange-500"
-                              />
-                              <div className="flex-1">
-                                <label className="text-sm text-slate-700">{item}</label>
-                                <input
-                                  type="text"
-                                  value={formData.checklist_itens[globalIndex]?.observacao || ""}
-                                  onChange={(e) => updateChecklistItem(globalIndex, "observacao", e.target.value)}
-                                  placeholder="Observações (opcional)"
-                                  className="mt-1 w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        );
-                      })}
+                {/* Column Header */}
+                <div className="p-4 border-b border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-bold text-slate-900 flex items-center space-x-2">
+                      <GripVertical className="w-4 h-4 text-slate-400" />
+                      <span>{column.nome}</span>
+                      <span className="text-xs bg-slate-200 px-2 py-1 rounded-full">
+                        {columnTasks.length}
+                      </span>
+                    </h3>
+                    <div className="flex space-x-1">
+                      <button
+                        onClick={() => {
+                          setColumnForm({ nome: column.nome, cor: column.cor });
+                          setEditingColumn(column);
+                          setShowColumnModal(true);
+                        }}
+                        className="p-1 hover:bg-slate-200 rounded"
+                      >
+                        <Edit className="w-4 h-4 text-slate-600" />
+                      </button>
+                      <button
+                        onClick={() => deleteColumn(column.id)}
+                        className="p-1 hover:bg-red-100 rounded"
+                      >
+                        <Trash2 className="w-4 h-4 text-red-600" />
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                  <button
+                    onClick={() => openNewTask(column.id)}
+                    className="w-full py-2 bg-white border-2 border-dashed border-slate-300 rounded-lg hover:border-[#108bd1] hover:bg-blue-50 transition-all text-sm font-medium text-slate-600 flex items-center justify-center space-x-1"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Nova Tarefa</span>
+                  </button>
+                </div>
 
-              <div className="flex space-x-4 pt-4">
+                {/* Tasks */}
+                <div className="p-3 space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto">
+                  {columnTasks.map(task => {
+                    const isExpanded = expandedTasks.has(task.id);
+                    const isOverdue = isTaskOverdue(task.data_vencimento);
+                    const priorityColor = getTaskPriorityColor(task.prioridade);
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        className="bg-white rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow"
+                        draggable
+                        onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={(e) => {
+                          e.preventDefault();
+                          const draggedTaskId = e.dataTransfer.getData("taskId");
+                          if (draggedTaskId !== task.id) {
+                            moveTask(draggedTaskId, column.id);
+                          }
+                        }}
+                      >
+                        <div className="p-3">
+                          <div className="flex items-start justify-between mb-2">
+                            <h4 className="font-semibold text-slate-900 flex-1">{task.titulo}</h4>
+                            <div className="flex space-x-1">
+                              <button
+                                onClick={() => openEditTask(task)}
+                                className="p-1 hover:bg-blue-50 rounded"
+                              >
+                                <Edit className="w-4 h-4 text-[#085ba7]" />
+                              </button>
+                              <button
+                                onClick={() => deleteTask(task.id)}
+                                className="p-1 hover:bg-red-50 rounded"
+                              >
+                                <Trash2 className="w-4 h-4 text-red-600" />
+                              </button>
+                              <button
+                                onClick={() => toggleExpand(task.id)}
+                                className="p-1 hover:bg-slate-100 rounded"
+                              >
+                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mb-2">
+                            {task.responsavel && (
+                              <span className="text-xs flex items-center space-x-1 text-slate-600">
+                                <User className="w-3 h-3" />
+                                <span>{task.responsavel}</span>
+                              </span>
+                            )}
+                            {task.data_vencimento && (
+                              <span className={`text-xs flex items-center space-x-1 ${isOverdue ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+                                <Calendar className="w-3 h-3" />
+                                <span>{new Date(task.data_vencimento).toLocaleDateString('pt-BR')}</span>
+                              </span>
+                            )}
+                            {task.prioridade && (
+                              <span className="text-xs flex items-center space-x-1" style={{ color: priorityColor }}>
+                                <Flag className="w-3 h-3" />
+                                <span>{task.prioridade}</span>
+                              </span>
+                            )}
+                          </div>
+
+                          {task.tags && task.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {task.tags.map(tag => (
+                                <span
+                                  key={tag.id}
+                                  className="px-2 py-1 text-xs font-medium rounded-full text-white"
+                                  style={{ backgroundColor: tag.cor }}
+                                >
+                                  {tag.nome}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {isExpanded && task.descricao && (
+                            <div className="mt-2 pt-2 border-t border-slate-100">
+                              <p className="text-sm text-slate-600 whitespace-pre-wrap">{task.descricao}</p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Modal Coluna */}
+      {showColumnModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+            <h2 className="text-2xl font-bold mb-4">
+              {editingColumn ? "Editar Coluna" : "Nova Coluna"}
+            </h2>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Nome</label>
+                <input
+                  type="text"
+                  value={columnForm.nome}
+                  onChange={(e) => setColumnForm({ ...columnForm, nome: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+                  placeholder="Ex: Em Andamento"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Cor</label>
+                <input
+                  type="color"
+                  value={columnForm.cor}
+                  onChange={(e) => setColumnForm({ ...columnForm, cor: e.target.value })}
+                  className="w-full h-12 border border-slate-300 rounded-lg cursor-pointer"
+                />
+              </div>
+              <div className="flex space-x-3 pt-4">
                 <button
-                  type="button"
                   onClick={() => {
-                    setShowForm(false);
-                    setEditingId(null);
+                    setShowColumnModal(false);
+                    setEditingColumn(null);
                   }}
-                  className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
                 >
                   Cancelar
                 </button>
                 <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
+                  onClick={saveColumn}
+                  className="flex-1 px-4 py-2 bg-[#ff901c] text-white rounded-lg hover:bg-[#e58318] font-semibold"
                 >
-                  {editingId ? "Atualizar" : "Salvar"} Análise
+                  Salvar
                 </button>
               </div>
-            </form>
+            </div>
           </div>
         </div>
       )}
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {campanhas.map((campanha) => {
-          const totalItens = campanha.checklist_itens.length;
-          const itensChecked = campanha.checklist_itens.filter(i => i.checked).length;
-          const percentual = Math.round((itensChecked / totalItens) * 100);
-
-          return (
-            <div key={campanha.id} className="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-4">
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-slate-900">{campanha.nome}</h3>
-                  <p className="text-sm text-slate-500">
-                    {new Date(campanha.data_analise).toLocaleDateString('pt-BR')}
-                  </p>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => editCampanha(campanha)}
-                    className="p-2 text-[#ff901c] hover:bg-orange-50 rounded-lg"
-                  >
-                    ✏️
-                  </button>
-                  <button
-                    onClick={() => deleteCampanha(campanha.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
+      {/* Modal Tarefa */}
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full my-8">
+            <h2 className="text-2xl font-bold mb-4">
+              {editingTask ? "Editar Tarefa" : "Nova Tarefa"}
+            </h2>
+            <div className="space-y-4">
               <div>
-                <div className="flex justify-between text-sm mb-2">
-                  <span className="text-slate-600">Progresso</span>
-                  <span className="font-semibold text-slate-900">{itensChecked}/{totalItens}</span>
-                </div>
-                <div className="w-full bg-slate-200 rounded-full h-3">
-                  <div
-                    className={`h-3 rounded-full transition-all ${
-                      percentual >= 80 ? "bg-green-500" :
-                      percentual >= 50 ? "bg-yellow-500" :
-                      "bg-red-500"
-                    }`}
-                    style={{ width: `${percentual}%` }}
-                  />
-                </div>
-                <p className="text-xs text-slate-500 mt-1">{percentual}% concluído</p>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Título *</label>
+                <input
+                  type="text"
+                  value={taskForm.titulo}
+                  onChange={(e) => setTaskForm({ ...taskForm, titulo: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+                  placeholder="Ex: Criar posts Black Friday"
+                />
               </div>
-
-              <div className="pt-4 border-t border-slate-200">
-                <p className="text-sm text-slate-600">
-                  {campanha.checklist_itens.filter(i => i.observacao).length} observações registradas
-                </p>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Descrição</label>
+                <textarea
+                  value={taskForm.descricao}
+                  onChange={(e) => setTaskForm({ ...taskForm, descricao: e.target.value })}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+                  placeholder="Detalhes da tarefa..."
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Responsável</label>
+                  <select
+                    value={taskForm.responsavel}
+                    onChange={(e) => setTaskForm({ ...taskForm, responsavel: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+                  >
+                    {TEAM_MEMBERS.map(m => <option key={m}>{m}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-700 mb-2">Prioridade</label>
+                  <select
+                    value={taskForm.prioridade}
+                    onChange={(e) => setTaskForm({ ...taskForm, prioridade: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+                  >
+                    {PRIORIDADES.map(p => (
+                      <option key={p.valor}>{p.emoji} {p.valor}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Data de Vencimento</label>
+                <input
+                  type="date"
+                  value={taskForm.data_vencimento}
+                  onChange={(e) => setTaskForm({ ...taskForm, data_vencimento: e.target.value })}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Tags</label>
+                <div className="flex flex-wrap gap-2">
+                  {tags.map(tag => (
+                    <button
+                      key={tag.id}
+                      onClick={() => {
+                        setTaskForm({
+                          ...taskForm,
+                          tag_ids: taskForm.tag_ids.includes(tag.id)
+                            ? taskForm.tag_ids.filter(id => id !== tag.id)
+                            : [...taskForm.tag_ids, tag.id]
+                        });
+                      }}
+                      className={`px-3 py-1 rounded-full text-sm font-medium transition-all ${
+                        taskForm.tag_ids.includes(tag.id)
+                          ? 'text-white'
+                          : 'text-slate-700 bg-slate-100 hover:bg-slate-200'
+                      }`}
+                      style={taskForm.tag_ids.includes(tag.id) ? { backgroundColor: tag.cor } : {}}
+                    >
+                      {tag.nome}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="flex space-x-3 pt-4">
+                <button
+                  onClick={() => {
+                    setShowTaskModal(false);
+                    setEditingTask(null);
+                    resetTaskForm();
+                  }}
+                  className="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={saveTask}
+                  className="flex-1 px-4 py-2 bg-[#ff901c] text-white rounded-lg hover:bg-[#e58318] font-semibold"
+                >
+                  {editingTask ? "Atualizar" : "Criar"}
+                </button>
               </div>
             </div>
-          );
-        })}
-      </div>
-
-      {campanhas.length === 0 && (
-        <div className="text-center py-16">
-          <Target className="w-24 h-24 text-slate-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-slate-600 mb-2">Nenhuma análise criada</h3>
-          <p className="text-slate-500 mb-6">Crie sua primeira análise de campanha</p>
-          <button
-            onClick={() => setShowForm(true)}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nova Análise</span>
-          </button>
+          </div>
         </div>
       )}
     </div>

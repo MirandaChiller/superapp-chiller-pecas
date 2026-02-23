@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { 
   Users, Target, PieChart, Calendar, 
   TrendingUp, BarChart3, Home, Edit3 // ← Adicionar Edit3
+import { CheckSquare }
 } from "lucide-react";
 
 const navigation = [
@@ -13,7 +14,7 @@ const navigation = [
   { name: "Posicionamento", href: "/posicionamento", icon: Target },
   { name: "Temas & Intensidades", href: "/content-pie", icon: PieChart },
   { name: "Planejamento de Feed", href: "/feed", icon: Calendar },
-  { name: "Métricas Tráfego", href: "/metrics-matcher", icon: TrendingUp },
+  { name: "Tarefas", href: "/metrics-matcher", icon: CheckSquare },
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
   { name: "Edições Campanhas", href: "/campaign-edits", icon: Edit3 }, // ← NOVO
 ];

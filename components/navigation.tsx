@@ -30,11 +30,11 @@ export function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-20">
           <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 bg-gradient-to-br from-[#ff901c] to-[#085ba7] rounded-xl flex items-center justify-center shadow-lg">
               <span className="text-white font-bold text-xl">CP</span>
             </div>
             <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
+              <h1 className="text-2xl font-bold bg-gradient-to-r from-[#ff901c] to-[#085ba7] bg-clip-text text-transparent">
                 Chiller Peças
               </h1>
               <p className="text-xs text-slate-500 font-medium">Marketing Intelligence Platform</p>
@@ -50,14 +50,14 @@ export function Navigation() {
                 <Link
                   key={item.name}
                   href={item.href}
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 ${
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 font-medium ${
                     isActive
-                      ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-md"
-                      : "text-slate-600 hover:bg-slate-100 hover:text-slate-900"
+                      ? "bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white shadow-md"
+                      : "text-slate-600 hover:bg-blue-50 hover:text-[#085ba7]"
                   }`}
                 >
                   <Icon className="w-4 h-4" />
-                  <span className="text-sm font-medium">{item.name}</span>
+                  <span className="text-sm">{item.name}</span>
                 </Link>
               );
             })}

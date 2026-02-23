@@ -3,13 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { 
-  Users, 
-  Target, 
-  PieChart, 
-  Calendar, 
-  TrendingUp, 
-  BarChart3,
-  Home 
+  Users, Target, PieChart, Calendar, 
+  TrendingUp, BarChart3, Home, Edit3 // ← Adicionar Edit3
 } from "lucide-react";
 
 const navigation = [
@@ -20,6 +15,7 @@ const navigation = [
   { name: "Planejamento de Feed", href: "/feed", icon: Calendar },
   { name: "Métricas Tráfego", href: "/metrics-matcher", icon: TrendingUp },
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
+  { name: "Edições Campanhas", href: "/campaign-edits", icon: Edit3 }, // ← NOVO
 ];
 
 export function Navigation() {

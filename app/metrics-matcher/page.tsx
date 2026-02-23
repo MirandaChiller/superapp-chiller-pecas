@@ -52,6 +52,7 @@ export default function TasksPage() {
   const [loading, setLoading] = useState(true);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
+  const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
   
   // Modals
   const [showColumnModal, setShowColumnModal] = useState(false);
@@ -209,7 +210,39 @@ export default function TasksPage() {
     loadData();
   }
 
-  async function moveTask(taskId: string, newColumnId: string) {
+  async function reorderTasks(draggedTask: Task, targetTask: Task) {
+    const columnTasks = tasks
+      .filter(t => t.column_id === targetTask.column_id)
+      .sort((a, b) => a.ordem - b.ordem);
+    
+    const draggedIndex = columnTasks.findIndex(t => t.id === draggedTask.id);
+    const targetIndex = columnTasks.findIndex(t => t.id === targetTask.id);
+    
+    if (draggedIndex === -1 || targetIndex === -1) return;
+    
+    // Remove da posição original
+    columnTasks.splice(draggedIndex, 1);
+    // Insere na nova posição
+    columnTasks.splice(targetIndex, 0, draggedTask);
+    
+    // Atualiza ordens no banco
+    const updates = columnTasks.map((task, index) => ({
+      id: task.id,
+      column_id: targetTask.column_id,
+      ordem: index
+    }));
+    
+    for (const update of updates) {
+      await supabase
+        .from("kanban_tasks")
+        .update({ ordem: update.ordem, column_id: update.column_id })
+        .eq("id", update.id);
+    }
+    
+    loadData();
+  }
+
+  async function moveTaskToColumn(taskId: string, newColumnId: string) {
     const task = tasks.find(t => t.id === taskId);
     if (!task || task.column_id === newColumnId) return;
     
@@ -234,10 +267,40 @@ export default function TasksPage() {
     e.preventDefault();
   }
 
-  function handleDrop(columnId: string) {
+  function handleTaskDragOver(e: React.DragEvent, taskId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTaskId(taskId);
+  }
+
+  function handleTaskDrop(e: React.DragEvent, targetTaskId: string) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (draggedTaskId && draggedTaskId !== targetTaskId) {
+      const draggedTask = tasks.find(t => t.id === draggedTaskId);
+      const targetTask = tasks.find(t => t.id === targetTaskId);
+      
+      if (draggedTask && targetTask) {
+        if (draggedTask.column_id === targetTask.column_id) {
+          // Reordenar na mesma coluna
+          reorderTasks(draggedTask, targetTask);
+        } else {
+          // Mover para outra coluna
+          moveTaskToColumn(draggedTaskId, targetTask.column_id);
+        }
+      }
+    }
+    
+    setDraggedTaskId(null);
+    setDragOverTaskId(null);
+  }
+
+  function handleColumnDrop(columnId: string) {
     if (draggedTaskId) {
-      moveTask(draggedTaskId, columnId);
+      moveTaskToColumn(draggedTaskId, columnId);
       setDraggedTaskId(null);
+      setDragOverTaskId(null);
     }
   }
 
@@ -382,7 +445,7 @@ export default function TasksPage() {
                 className="w-80 flex-shrink-0 bg-slate-50 rounded-xl"
                 style={{ borderTop: `4px solid ${column.cor}` }}
                 onDragOver={handleDragOver}
-                onDrop={() => handleDrop(column.id)}
+                onDrop={() => handleColumnDrop(column.id)}
               >
                 <div className="p-4 border-b border-slate-200">
                   <div className="flex items-center justify-between mb-2">
@@ -427,19 +490,26 @@ export default function TasksPage() {
                     const isOverdue = isTaskOverdue(task.data_vencimento);
                     const priorityColor = getTaskPriorityColor(task.prioridade);
                     const isDragging = draggedTaskId === task.id;
+                    const isDragOver = dragOverTaskId === task.id;
                     
                     return (
                       <div
                         key={task.id}
-                        className={`bg-white rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-all cursor-move ${
-                          isDragging ? 'opacity-50' : ''
-                        }`}
+                        className={`bg-white rounded-lg shadow-sm border-2 transition-all cursor-move ${
+                          isDragging ? 'opacity-50 border-slate-300' : 
+                          isDragOver ? 'border-[#108bd1] border-dashed' : 'border-slate-200'
+                        } hover:shadow-md`}
                         draggable
                         onDragStart={() => handleDragStart(task.id)}
+                        onDragOver={(e) => handleTaskDragOver(e, task.id)}
+                        onDrop={(e) => handleTaskDrop(e, task.id)}
                       >
                         <div className="p-3">
                           <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-semibold text-slate-900 flex-1">{task.titulo}</h4>
+                            <div className="flex items-start space-x-2 flex-1">
+                              <GripVertical className="w-4 h-4 text-slate-400 mt-0.5 flex-shrink-0" />
+                              <h4 className="font-semibold text-slate-900 flex-1">{task.titulo}</h4>
+                            </div>
                             <div className="flex space-x-1">
                               <button
                                 onClick={() => openEditTask(task)}
@@ -462,7 +532,7 @@ export default function TasksPage() {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-2 mb-2">
+                          <div className="flex flex-wrap gap-2 mb-2 ml-6">
                             {task.responsavel && (
                               <span className="text-xs flex items-center space-x-1 text-slate-600">
                                 <User className="w-3 h-3" />
@@ -484,7 +554,7 @@ export default function TasksPage() {
                           </div>
 
                           {task.tags && task.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mb-2">
+                            <div className="flex flex-wrap gap-1 mb-2 ml-6">
                               {task.tags.map(tag => (
                                 <span
                                   key={tag.id}
@@ -498,7 +568,7 @@ export default function TasksPage() {
                           )}
 
                           {isExpanded && task.descricao && (
-                            <div className="mt-2 pt-2 border-t border-slate-100">
+                            <div className="mt-2 pt-2 border-t border-slate-100 ml-6">
                               <p className="text-sm text-slate-600 whitespace-pre-wrap">{task.descricao}</p>
                             </div>
                           )}

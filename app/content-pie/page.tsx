@@ -95,7 +95,7 @@ export default function ContentPiePage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 border-4 border-[#ff901c] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -110,7 +110,7 @@ export default function ContentPiePage() {
         <button
           onClick={saveData}
           disabled={saving}
-          className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
+          className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all"
         >
           <Save className="w-4 h-4" />
           <span>{saving ? "Salvando..." : "Salvar"}</span>
@@ -141,7 +141,7 @@ export default function ContentPiePage() {
               <h3 className="text-lg font-semibold text-slate-900">Temas de Conteúdo</h3>
               <button
                 onClick={addTema}
-                className="flex items-center space-x-2 px-4 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition-colors"
+                className="flex items-center space-x-2 px-4 py-2 bg-[#ff901c] text-white rounded-lg hover:bg-[#ff901c] transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 <span>Adicionar Tema</span>
@@ -183,7 +183,7 @@ export default function ContentPiePage() {
                 <span className={`text-lg font-bold ${
                   totalPercentual === 100 ? "text-green-600" : 
                   totalPercentual > 100 ? "text-red-600" : 
-                  "text-orange-600"
+                  "text-[#ff901c]"
                 }`}>
                   {totalPercentual}%
                 </span>
@@ -213,7 +213,7 @@ export default function ContentPiePage() {
                   </div>
                   <div className="w-full bg-slate-200 rounded-full h-2">
                     <div
-                      className="bg-gradient-to-r from-orange-500 to-red-600 h-2 rounded-full transition-all"
+                      className="bg-gradient-to-r from-[#ff901c] to-[#085ba7] h-2 rounded-full transition-all"
                       style={{ width: `${Math.min(tema.percentual, 100)}%` }}
                     />
                   </div>
@@ -224,7 +224,7 @@ export default function ContentPiePage() {
 
           <div className="mt-6 pt-6 border-t border-slate-200">
             <div className="text-center">
-              <div className="text-3xl font-bold text-orange-600">{totalPostsMes}</div>
+              <div className="text-3xl font-bold text-[#ff901c]">{totalPostsMes}</div>
               <div className="text-sm text-slate-600">Posts totais/mês</div>
             </div>
           </div>

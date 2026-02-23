@@ -15,7 +15,7 @@ const tools = [
     description: "Crie personas detalhadas com IA para entender melhor seu público-alvo",
     href: "/personas",
     icon: Users,
-    color: "from-blue-500 to-cyan-500",
+    color: "from-[#085ba7] to-[#108bd1]",
     step: 1,
   },
   {
@@ -23,7 +23,7 @@ const tools = [
     description: "Defina Canvas, IKIGAI e Declaração de posicionamento estratégico",
     href: "/posicionamento",
     icon: Target,
-    color: "from-purple-500 to-pink-500",
+    color: "from-[#108bd1] to-[#085ba7]",
     step: 2,
   },
   {
@@ -31,7 +31,7 @@ const tools = [
     description: "Planeje distribuição de conteúdo e volume de posts mensais",
     href: "/content-pie",
     icon: PieChart,
-    color: "from-green-500 to-emerald-500",
+    color: "from-[#ff901c] to-[#085ba7]",
     step: 3,
   },
   {
@@ -39,7 +39,7 @@ const tools = [
     description: "Organize posts com objetivos, formatos e calendário editorial",
     href: "/feed",
     icon: Calendar,
-    color: "from-orange-500 to-red-500",
+    color: "from-[#085ba7] to-[#ff901c]",
     step: 4,
   },
   {
@@ -47,7 +47,7 @@ const tools = [
     description: "Checklist de otimização para campanhas pagas",
     href: "/metrics-matcher",
     icon: TrendingUp,
-    color: "from-yellow-500 to-orange-500",
+    color: "from-[#ff901c] to-[#108bd1]",
     step: 5,
   },
   {
@@ -55,7 +55,7 @@ const tools = [
     description: "Acompanhe métricas e score de posts publicados",
     href: "/indicadores",
     icon: BarChart3,
-    color: "from-indigo-500 to-purple-500",
+    color: "from-[#108bd1] to-[#ff901c]",
     step: 6,
   },
 ];
@@ -98,7 +98,7 @@ export default function Home() {
                 </div>
                 
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-slate-900 group-hover:text-orange-600 transition-colors">
+                  <h3 className="text-xl font-bold text-slate-900 group-hover:text-[#ff901c] transition-colors">
                     {tool.name}
                   </h3>
                   <p className="text-sm text-slate-600 leading-relaxed">
@@ -106,7 +106,7 @@ export default function Home() {
                   </p>
                 </div>
                 
-                <div className="flex items-center text-orange-600 font-medium text-sm group-hover:translate-x-1 transition-transform">
+                <div className="flex items-center text-[#ff901c] font-semibold text-sm group-hover:translate-x-1 transition-transform">
                   Acessar ferramenta
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </div>
@@ -116,22 +116,22 @@ export default function Home() {
         })}
       </div>
 
-      <div className="bg-gradient-to-r from-orange-500 to-red-600 rounded-2xl p-8 text-white shadow-xl">
+      <div className="bg-gradient-to-r from-[#085ba7] via-[#108bd1] to-[#ff901c] rounded-2xl p-8 text-white shadow-xl">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Fluxo de Trabalho Integrado</h2>
-            <p className="text-orange-100">
+            <p className="text-blue-100">
               Persona → Posicionamento → Temas → Feed → Métricas
             </p>
           </div>
           <div className="hidden lg:flex items-center space-x-2">
             {tools.map((tool, index) => (
               <div key={tool.name} className="flex items-center">
-                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-white/20 backdrop-blur flex items-center justify-center font-bold">
                   <span className="text-sm font-bold">{index + 1}</span>
                 </div>
                 {index < tools.length - 1 && (
-                  <ArrowRight className="w-5 h-5 mx-1 text-white/60" />
+                  <ArrowRight className="w-5 h-5 mx-1 text-white/70" />
                 )}
               </div>
             ))}

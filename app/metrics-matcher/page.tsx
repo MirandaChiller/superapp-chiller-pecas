@@ -2,13 +2,22 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, X, Edit, Trash2, ChevronDown, ChevronUp, Calendar, User, Flag, GripVertical } from "lucide-react";
+import { Plus, X, Edit, Trash2, ChevronDown, ChevronUp, Calendar, User, Flag, GripVertical, Paperclip, Upload, Download } from "lucide-react";
 
 interface Column {
   id: string;
   nome: string;
   cor: string;
   ordem: number;
+}
+
+interface Attachment {
+  id: string;
+  task_id: string;
+  nome_arquivo: string;
+  tipo_arquivo: string;
+  arquivo_base64: string;
+  tamanho: number;
 }
 
 interface Task {
@@ -21,6 +30,7 @@ interface Task {
   prioridade: string;
   ordem: number;
   tags?: Tag[];
+  attachments?: Attachment[];
 }
 
 interface Tag {
@@ -54,19 +64,16 @@ export default function TasksPage() {
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
   
-  // Modals
   const [showColumnModal, setShowColumnModal] = useState(false);
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingColumn, setEditingColumn] = useState<Column | null>(null);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [selectedColumnId, setSelectedColumnId] = useState("");
   
-  // Filtros
   const [filterResponsavel, setFilterResponsavel] = useState("Todos");
   const [filterPrioridade, setFilterPrioridade] = useState("Todas");
   const [filterTag, setFilterTag] = useState("Todas");
   
-  // Forms
   const [columnForm, setColumnForm] = useState({ nome: "", cor: "#085ba7" });
   const [taskForm, setTaskForm] = useState({
     titulo: "",
@@ -74,7 +81,8 @@ export default function TasksPage() {
     responsavel: "Não atribuído",
     data_vencimento: "",
     prioridade: "Média",
-    tag_ids: [] as string[]
+    tag_ids: [] as string[],
+    attachments: [] as { nome: string; tipo: string; base64: string; tamanho: number }[]
   });
 
   useEffect(() => {
@@ -97,14 +105,16 @@ export default function TasksPage() {
         *,
         kanban_task_tags (
           kanban_tags (*)
-        )
+        ),
+        kanban_attachments (*)
       `)
       .order("ordem");
     
     if (tasksData) {
       const formatted = tasksData.map(t => ({
         ...t,
-        tags: t.kanban_task_tags?.map((tt: any) => tt.kanban_tags) || []
+        tags: t.kanban_task_tags?.map((tt: any) => tt.kanban_tags) || [],
+        attachments: t.kanban_attachments || []
       }));
       setTasks(formatted);
     }
@@ -150,7 +160,7 @@ export default function TasksPage() {
     if (!taskForm.titulo || !selectedColumnId) return;
     
     if (editingTask) {
-      const { data: updated } = await supabase
+      await supabase
         .from("kanban_tasks")
         .update({
           titulo: taskForm.titulo,
@@ -159,17 +169,26 @@ export default function TasksPage() {
           data_vencimento: taskForm.data_vencimento || null,
           prioridade: taskForm.prioridade
         })
-        .eq("id", editingTask.id)
-        .select()
-        .single();
+        .eq("id", editingTask.id);
       
-      if (updated) {
-        await supabase.from("kanban_task_tags").delete().eq("task_id", updated.id);
-        if (taskForm.tag_ids.length > 0) {
-          await supabase.from("kanban_task_tags").insert(
-            taskForm.tag_ids.map(tag_id => ({ task_id: updated.id, tag_id }))
-          );
-        }
+      await supabase.from("kanban_task_tags").delete().eq("task_id", editingTask.id);
+      if (taskForm.tag_ids.length > 0) {
+        await supabase.from("kanban_task_tags").insert(
+          taskForm.tag_ids.map(tag_id => ({ task_id: editingTask.id, tag_id }))
+        );
+      }
+
+      await supabase.from("kanban_attachments").delete().eq("task_id", editingTask.id);
+      if (taskForm.attachments.length > 0) {
+        await supabase.from("kanban_attachments").insert(
+          taskForm.attachments.map(att => ({
+            task_id: editingTask.id,
+            nome_arquivo: att.nome,
+            tipo_arquivo: att.tipo,
+            arquivo_base64: att.base64,
+            tamanho: att.tamanho
+          }))
+        );
       }
     } else {
       const maxOrdem = Math.max(
@@ -191,10 +210,24 @@ export default function TasksPage() {
         .select()
         .single();
       
-      if (newTask && taskForm.tag_ids.length > 0) {
-        await supabase.from("kanban_task_tags").insert(
-          taskForm.tag_ids.map(tag_id => ({ task_id: newTask.id, tag_id }))
-        );
+      if (newTask) {
+        if (taskForm.tag_ids.length > 0) {
+          await supabase.from("kanban_task_tags").insert(
+            taskForm.tag_ids.map(tag_id => ({ task_id: newTask.id, tag_id }))
+          );
+        }
+        
+        if (taskForm.attachments.length > 0) {
+          await supabase.from("kanban_attachments").insert(
+            taskForm.attachments.map(att => ({
+              task_id: newTask.id,
+              nome_arquivo: att.nome,
+              tipo_arquivo: att.tipo,
+              arquivo_base64: att.base64,
+              tamanho: att.tamanho
+            }))
+          );
+        }
       }
     }
     
@@ -220,12 +253,9 @@ export default function TasksPage() {
     
     if (draggedIndex === -1 || targetIndex === -1) return;
     
-    // Remove da posição original
     columnTasks.splice(draggedIndex, 1);
-    // Insere na nova posição
     columnTasks.splice(targetIndex, 0, draggedTask);
     
-    // Atualiza ordens no banco
     const updates = columnTasks.map((task, index) => ({
       id: task.id,
       column_id: targetTask.column_id,
@@ -283,10 +313,8 @@ export default function TasksPage() {
       
       if (draggedTask && targetTask) {
         if (draggedTask.column_id === targetTask.column_id) {
-          // Reordenar na mesma coluna
           reorderTasks(draggedTask, targetTask);
         } else {
-          // Mover para outra coluna
           moveTaskToColumn(draggedTaskId, targetTask.column_id);
         }
       }
@@ -304,6 +332,78 @@ export default function TasksPage() {
     }
   }
 
+  async function handleFilePaste(e: React.ClipboardEvent) {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    for (let i = 0; i < items.length; i++) {
+      if (items[i].type.indexOf('image') !== -1) {
+        const blob = items[i].getAsFile();
+        if (blob) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const base64 = event.target?.result as string;
+            setTaskForm(prev => ({
+              ...prev,
+              attachments: [...prev.attachments, {
+                nome: `imagem-${Date.now()}.png`,
+                tipo: blob.type,
+                base64: base64,
+                tamanho: blob.size
+              }]
+            }));
+          };
+          reader.readAsDataURL(blob);
+        }
+      }
+    }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target?.result as string;
+        setTaskForm(prev => ({
+          ...prev,
+          attachments: [...prev.attachments, {
+            nome: file.name,
+            tipo: file.type,
+            base64: base64,
+            tamanho: file.size
+          }]
+        }));
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function removeAttachment(index: number) {
+    setTaskForm(prev => ({
+      ...prev,
+      attachments: prev.attachments.filter((_, i) => i !== index)
+    }));
+  }
+
+  function downloadAttachment(attachment: Attachment) {
+    const link = document.createElement('a');
+    link.href = attachment.arquivo_base64;
+    link.download = attachment.nome_arquivo;
+    link.click();
+  }
+
+  function getFileIcon(tipo: string) {
+    if (tipo.includes('image')) return '🖼️';
+    if (tipo.includes('pdf')) return '📄';
+    if (tipo.includes('sheet') || tipo.includes('excel')) return '📊';
+    if (tipo.includes('document') || tipo.includes('word')) return '📝';
+    return '📎';
+  }
+
   function openEditTask(task: Task) {
     setTaskForm({
       titulo: task.titulo,
@@ -311,7 +411,13 @@ export default function TasksPage() {
       responsavel: task.responsavel || "Não atribuído",
       data_vencimento: task.data_vencimento || "",
       prioridade: task.prioridade || "Média",
-      tag_ids: task.tags?.map(t => t.id) || []
+      tag_ids: task.tags?.map(t => t.id) || [],
+      attachments: task.attachments?.map(a => ({
+        nome: a.nome_arquivo,
+        tipo: a.tipo_arquivo,
+        base64: a.arquivo_base64,
+        tamanho: a.tamanho
+      })) || []
     });
     setSelectedColumnId(task.column_id);
     setEditingTask(task);
@@ -331,7 +437,8 @@ export default function TasksPage() {
       responsavel: "Não atribuído",
       data_vencimento: "",
       prioridade: "Média",
-      tag_ids: []
+      tag_ids: [],
+      attachments: []
     });
   }
 
@@ -551,6 +658,12 @@ export default function TasksPage() {
                                 <span>{task.prioridade}</span>
                               </span>
                             )}
+                            {task.attachments && task.attachments.length > 0 && (
+                              <span className="text-xs flex items-center space-x-1 text-slate-600">
+                                <Paperclip className="w-3 h-3" />
+                                <span>{task.attachments.length}</span>
+                              </span>
+                            )}
                           </div>
 
                           {task.tags && task.tags.length > 0 && (
@@ -567,9 +680,30 @@ export default function TasksPage() {
                             </div>
                           )}
 
-                          {isExpanded && task.descricao && (
-                            <div className="mt-2 pt-2 border-t border-slate-100 ml-6">
-                              <p className="text-sm text-slate-600 whitespace-pre-wrap">{task.descricao}</p>
+                          {isExpanded && (
+                            <div className="mt-2 pt-2 border-t border-slate-100 ml-6 space-y-2">
+                              {task.descricao && (
+                                <p className="text-sm text-slate-600 whitespace-pre-wrap">{task.descricao}</p>
+                              )}
+                              
+                              {task.attachments && task.attachments.length > 0 && (
+                                <div>
+                                  <p className="text-xs font-semibold text-slate-700 mb-1">Anexos:</p>
+                                  <div className="space-y-1">
+                                    {task.attachments.map(att => (
+                                      <button
+                                        key={att.id}
+                                        onClick={() => downloadAttachment(att)}
+                                        className="flex items-center space-x-2 text-xs text-slate-600 hover:text-[#085ba7] hover:bg-blue-50 px-2 py-1 rounded w-full"
+                                      >
+                                        <span>{getFileIcon(att.tipo_arquivo)}</span>
+                                        <span className="flex-1 text-left truncate">{att.nome_arquivo}</span>
+                                        <Download className="w-3 h-3" />
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -658,9 +792,10 @@ export default function TasksPage() {
                 <textarea
                   value={taskForm.descricao}
                   onChange={(e) => setTaskForm({ ...taskForm, descricao: e.target.value })}
+                  onPaste={handleFilePaste}
                   rows={3}
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
-                  placeholder="Detalhes da tarefa..."
+                  placeholder="Detalhes da tarefa... (Ctrl+V para colar imagens)"
                 />
               </div>
               <div className="grid grid-cols-2 gap-4">
@@ -722,6 +857,44 @@ export default function TasksPage() {
                   ))}
                 </div>
               </div>
+              
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Anexos</label>
+                <div className="space-y-3">
+                  <label className="flex items-center justify-center w-full px-4 py-3 border-2 border-dashed border-slate-300 rounded-lg hover:border-[#108bd1] hover:bg-blue-50 cursor-pointer transition-all">
+                    <input
+                      type="file"
+                      multiple
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
+                    />
+                    <Upload className="w-5 h-5 text-slate-600 mr-2" />
+                    <span className="text-sm font-medium text-slate-600">Escolher arquivos ou Ctrl+V para colar</span>
+                  </label>
+                  
+                  {taskForm.attachments.length > 0 && (
+                    <div className="space-y-2">
+                      {taskForm.attachments.map((att, index) => (
+                        <div key={index} className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-lg">
+                          <div className="flex items-center space-x-2 flex-1 min-w-0">
+                            <span className="text-lg">{getFileIcon(att.tipo)}</span>
+                            <span className="text-sm text-slate-700 truncate">{att.nome}</span>
+                            <span className="text-xs text-slate-500">{(att.tamanho / 1024).toFixed(1)} KB</span>
+                          </div>
+                          <button
+                            onClick={() => removeAttachment(index)}
+                            className="p-1 hover:bg-red-100 rounded"
+                          >
+                            <X className="w-4 h-4 text-red-600" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
               <div className="flex space-x-3 pt-4">
                 <button
                   onClick={() => {

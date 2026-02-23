@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, X, Edit, Trash2, ChevronDown, ChevronUp, Calendar, User, Flag, Tag, GripVertical } from "lucide-react";
+import { Plus, X, Edit, Trash2, ChevronDown, ChevronUp, Calendar, User, Flag, GripVertical } from "lucide-react";
 
 interface Column {
   id: string;
@@ -51,6 +51,7 @@ export default function TasksPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   
   // Modals
   const [showColumnModal, setShowColumnModal] = useState(false);
@@ -82,7 +83,6 @@ export default function TasksPage() {
   async function loadData() {
     setLoading(true);
     
-    // Carregar colunas
     const { data: colsData } = await supabase
       .from("kanban_columns")
       .select("*")
@@ -90,7 +90,6 @@ export default function TasksPage() {
     
     if (colsData) setColumns(colsData);
     
-    // Carregar tarefas
     const { data: tasksData } = await supabase
       .from("kanban_tasks")
       .select(`
@@ -109,7 +108,6 @@ export default function TasksPage() {
       setTasks(formatted);
     }
     
-    // Carregar tags
     const { data: tagsData } = await supabase
       .from("kanban_tags")
       .select("*")
@@ -120,7 +118,6 @@ export default function TasksPage() {
     setLoading(false);
   }
 
-  // CRUD Colunas
   async function saveColumn() {
     if (!columnForm.nome) return;
     
@@ -148,7 +145,6 @@ export default function TasksPage() {
     loadData();
   }
 
-  // CRUD Tarefas
   async function saveTask() {
     if (!taskForm.titulo || !selectedColumnId) return;
     
@@ -230,6 +226,21 @@ export default function TasksPage() {
     loadData();
   }
 
+  function handleDragStart(taskId: string) {
+    setDraggedTaskId(taskId);
+  }
+
+  function handleDragOver(e: React.DragEvent) {
+    e.preventDefault();
+  }
+
+  function handleDrop(columnId: string) {
+    if (draggedTaskId) {
+      moveTask(draggedTaskId, columnId);
+      setDraggedTaskId(null);
+    }
+  }
+
   function openEditTask(task: Task) {
     setTaskForm({
       titulo: task.titulo,
@@ -304,7 +315,6 @@ export default function TasksPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Gerenciamento de Tarefas</h1>
@@ -323,7 +333,6 @@ export default function TasksPage() {
         </button>
       </div>
 
-      {/* Filtros */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -362,7 +371,6 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Kanban Board */}
       <div className="overflow-x-auto pb-4">
         <div className="flex space-x-4 min-w-max">
           {columns.map(column => {
@@ -373,8 +381,9 @@ export default function TasksPage() {
                 key={column.id}
                 className="w-80 flex-shrink-0 bg-slate-50 rounded-xl"
                 style={{ borderTop: `4px solid ${column.cor}` }}
+                onDragOver={handleDragOver}
+                onDrop={() => handleDrop(column.id)}
               >
-                {/* Column Header */}
                 <div className="p-4 border-b border-slate-200">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-bold text-slate-900 flex items-center space-x-2">
@@ -412,27 +421,21 @@ export default function TasksPage() {
                   </button>
                 </div>
 
-                {/* Tasks */}
-                <div className="p-3 space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto">
+                <div className="p-3 space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto min-h-[200px]">
                   {columnTasks.map(task => {
                     const isExpanded = expandedTasks.has(task.id);
                     const isOverdue = isTaskOverdue(task.data_vencimento);
                     const priorityColor = getTaskPriorityColor(task.prioridade);
+                    const isDragging = draggedTaskId === task.id;
                     
                     return (
                       <div
                         key={task.id}
-                        className="bg-white rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-shadow"
+                        className={`bg-white rounded-lg shadow-sm border border-slate-200 hover:shadow-md transition-all cursor-move ${
+                          isDragging ? 'opacity-50' : ''
+                        }`}
                         draggable
-                        onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
-                        onDragOver={(e) => e.preventDefault()}
-                        onDrop={(e) => {
-                          e.preventDefault();
-                          const draggedTaskId = e.dataTransfer.getData("taskId");
-                          if (draggedTaskId !== task.id) {
-                            moveTask(draggedTaskId, column.id);
-                          }
-                        }}
+                        onDragStart={() => handleDragStart(task.id)}
                       >
                         <div className="p-3">
                           <div className="flex items-start justify-between mb-2">
@@ -473,7 +476,7 @@ export default function TasksPage() {
                               </span>
                             )}
                             {task.prioridade && (
-                              <span className="text-xs flex items-center space-x-1" style={{ color: priorityColor }}>
+                              <span className="text-xs flex items-center space-x-1 font-medium" style={{ color: priorityColor }}>
                                 <Flag className="w-3 h-3" />
                                 <span>{task.prioridade}</span>
                               </span>
@@ -503,6 +506,11 @@ export default function TasksPage() {
                       </div>
                     );
                   })}
+                  {columnTasks.length === 0 && (
+                    <div className="text-center py-8 text-slate-400 text-sm">
+                      Arraste tarefas aqui
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -510,7 +518,6 @@ export default function TasksPage() {
         </div>
       </div>
 
-      {/* Modal Coluna */}
       {showColumnModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl p-6 max-w-md w-full">
@@ -559,7 +566,6 @@ export default function TasksPage() {
         </div>
       )}
 
-      {/* Modal Tarefa */}
       {showTaskModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
           <div className="bg-white rounded-2xl p-6 max-w-2xl w-full my-8">
@@ -606,7 +612,7 @@ export default function TasksPage() {
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1]"
                   >
                     {PRIORIDADES.map(p => (
-                      <option key={p.valor}>{p.emoji} {p.valor}</option>
+                      <option key={p.valor} value={p.valor}>{p.emoji} {p.valor}</option>
                     ))}
                   </select>
                 </div>

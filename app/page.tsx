@@ -1,12 +1,7 @@
 import Link from "next/link";
 import { 
-  Users, 
-  Target, 
-  PieChart, 
-  Calendar, 
-  TrendingUp, 
-  BarChart3,
-  ArrowRight 
+  Users, Target, PieChart, Calendar, 
+  TrendingUp, BarChart3, ArrowRight, Edit3 // ← Adicionar Edit3
 } from "lucide-react";
 
 const tools = [
@@ -58,6 +53,14 @@ const tools = [
     color: "from-[#108bd1] to-[#ff901c]",
     step: 6,
   },
+  {
+  name: "Edições em Campanhas",
+  description: "Registre alterações em campanhas Google Ads com evidências",
+  href: "/campaign-edits",
+  icon: Edit3,
+  color: "from-[#085ba7] to-[#ff901c]",
+  step: 7,
+},
 ];
 
 export default function Home() {

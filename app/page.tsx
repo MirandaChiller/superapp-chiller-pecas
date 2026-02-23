@@ -2,6 +2,7 @@ import Link from "next/link";
 import { 
   Users, Target, PieChart, Calendar, 
   TrendingUp, BarChart3, ArrowRight, Edit3 // ← Adicionar Edit3
+  import { CheckSquare }
 } from "lucide-react";
 
 const tools = [
@@ -38,12 +39,12 @@ const tools = [
     step: 4,
   },
   {
-    name: "Métricas de Tráfego",
-    description: "Checklist de otimização para campanhas pagas",
-    href: "/metrics-matcher",
-    icon: TrendingUp,
-    color: "from-[#ff901c] to-[#108bd1]",
-    step: 5,
+  name: "Gerenciamento de Tarefas",
+  description: "Kanban para organizar e acompanhar tarefas da equipe",
+  href: "/metrics-matcher",
+  icon: CheckSquare,
+  color: "from-[#ff901c] to-[#108bd1]",
+  step: 5,
   },
   {
     name: "Indicadores de Performance",

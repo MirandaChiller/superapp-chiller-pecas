@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, Save, X, Upload, Calendar, FileText, Target, Filter, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn } from "lucide-react";
+import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn } from "lucide-react";
 
 interface CampaignEdit {
   id?: string;
@@ -44,8 +44,8 @@ export default function CampaignEditsPage() {
   const [saving, setSaving] = useState(false);
   const [filterTipo, setFilterTipo] = useState<string>("Todos");
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CampaignEdit>({
     nome_campanha: "",
@@ -91,7 +91,7 @@ export default function CampaignEditsPage() {
 
     try {
       if (editingId) {
-        // Atualizar registro existente
+        // Atualizar edição existente
         const { error } = await supabase
           .from("campaign_edits")
           .update({
@@ -110,11 +110,10 @@ export default function CampaignEditsPage() {
         if (!error) {
           await loadEdits();
           setShowForm(false);
-          setEditingId(null);
           resetForm();
         }
       } else {
-        // Criar novo registro
+        // Criar nova edição
         const { error } = await supabase
           .from("campaign_edits")
           .insert({
@@ -154,6 +153,7 @@ export default function CampaignEditsPage() {
       data_revisao: "",
       observacoes_revisao: ""
     });
+    setEditingId(null);
   }
 
   function handleEdit(edit: CampaignEdit) {
@@ -215,13 +215,15 @@ export default function CampaignEditsPage() {
   }
 
   function toggleCard(id: string) {
-    const newExpanded = new Set(expandedCards);
-    if (newExpanded.has(id)) {
-      newExpanded.delete(id);
-    } else {
-      newExpanded.add(id);
-    }
-    setExpandedCards(newExpanded);
+    setExpandedCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
   }
 
   const niveisDisponiveis = formData.tipo_campanha === "Pesquisa" 
@@ -243,7 +245,6 @@ export default function CampaignEditsPage() {
         </div>
         <button
           onClick={() => {
-            setEditingId(null);
             resetForm();
             setShowForm(true);
           }}
@@ -256,52 +257,30 @@ export default function CampaignEditsPage() {
 
       {/* Filtros */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Filter className="w-5 h-5 text-slate-600" />
-            <span className="text-sm font-semibold text-slate-700">Filtrar por:</span>
+        <div className="flex items-center justify-between flex-wrap gap-4">
+          <div className="flex items-center space-x-4">
+            <span className="text-sm font-semibold text-slate-700">Filtrar:</span>
+            <div className="flex space-x-2">
+              {["Todos", "Pesquisa", "Performance Max"].map(tipo => (
+                <button
+                  key={tipo}
+                  onClick={() => setFilterTipo(tipo)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    filterTipo === tipo
+                      ? "bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white shadow-md"
+                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
+                >
+                  {tipo}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="flex space-x-2">
-            {["Todos", "Pesquisa", "Performance Max"].map(tipo => (
-              <button
-                key={tipo}
-                onClick={() => setFilterTipo(tipo)}
-                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
-                  filterTipo === tipo
-                    ? "bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white shadow-md"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
-              >
-                {tipo}
-              </button>
-            ))}
-          </div>
-          <div className="ml-auto text-sm text-slate-600 font-medium">
+          <div className="text-sm text-slate-600 font-medium">
             {filteredEdits.length} edição{filteredEdits.length !== 1 ? 'ões' : ''}
           </div>
         </div>
       </div>
-
-      {/* Lightbox para Imagens */}
-      {lightboxImage && (
-        <div 
-          className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4"
-          onClick={() => setLightboxImage(null)}
-        >
-          <button
-            onClick={() => setLightboxImage(null)}
-            className="absolute top-4 right-4 text-white hover:text-slate-300 transition-colors"
-          >
-            <X className="w-8 h-8" />
-          </button>
-          <img
-            src={lightboxImage}
-            alt="Visualização em tela cheia"
-            className="max-w-full max-h-full object-contain"
-            onClick={(e) => e.stopPropagation()}
-          />
-        </div>
-      )}
 
       {/* Modal de Formulário */}
       {showForm && (
@@ -309,12 +288,11 @@ export default function CampaignEditsPage() {
           <div className="bg-white rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto relative my-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-slate-900">
-                {editingId ? "Editar Registro de Edição" : "Registrar Nova Edição"}
+                {editingId ? "Editar Registro" : "Registrar Nova Edição"}
               </h2>
               <button
                 onClick={() => {
                   setShowForm(false);
-                  setEditingId(null);
                   resetForm();
                 }}
                 disabled={saving}
@@ -335,7 +313,7 @@ export default function CampaignEditsPage() {
                   value={formData.nome_campanha}
                   onChange={(e) => setFormData({ ...formData, nome_campanha: e.target.value })}
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent font-medium"
-                  placeholder="Ex: Campanha Peças HVAC - São Paulo"
+                  placeholder="Ex: Black Friday 2024 - Peças HVAC"
                   required
                 />
               </div>
@@ -484,7 +462,6 @@ export default function CampaignEditsPage() {
                   type="button"
                   onClick={() => {
                     setShowForm(false);
-                    setEditingId(null);
                     resetForm();
                   }}
                   disabled={saving}
@@ -505,7 +482,7 @@ export default function CampaignEditsPage() {
                   ) : (
                     <>
                       <Save className="w-5 h-5" />
-                      <span>{editingId ? "Atualizar" : "Salvar"} Edição</span>
+                      <span>{editingId ? "Atualizar" : "Salvar"}</span>
                     </>
                   )}
                 </button>
@@ -515,7 +492,28 @@ export default function CampaignEditsPage() {
         </div>
       )}
 
-      {/* Lista de Edições */}
+      {/* Lightbox para Imagens */}
+      {lightboxImage && (
+        <div 
+          className="fixed inset-0 bg-black/90 flex items-center justify-center z-[60] p-4"
+          onClick={() => setLightboxImage(null)}
+        >
+          <button
+            onClick={() => setLightboxImage(null)}
+            className="absolute top-4 right-4 text-white hover:text-gray-300 bg-black/50 rounded-full p-2"
+          >
+            <X className="w-8 h-8" />
+          </button>
+          <img 
+            src={lightboxImage} 
+            alt="Visualização em tela cheia"
+            className="max-w-full max-h-full object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
+
+      {/* Lista de Edições - CARDS RECOLHÍVEIS */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-12 h-12 border-4 border-[#108bd1] border-t-transparent rounded-full animate-spin" />
@@ -532,7 +530,10 @@ export default function CampaignEditsPage() {
               : `Não há edições do tipo "${filterTipo}"`}
           </p>
           <button
-            onClick={() => setShowForm(true)}
+            onClick={() => {
+              resetForm();
+              setShowForm(true);
+            }}
             className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
           >
             <Plus className="w-5 h-5" />
@@ -542,18 +543,15 @@ export default function CampaignEditsPage() {
       ) : (
         <div className="grid gap-4">
           {filteredEdits.map((edit) => {
-            const isExpanded = expandedCards.has(edit.id!);
+            const isExpanded = expandedCards.has(edit.id || "");
             
             return (
               <div 
                 key={edit.id} 
-                className="bg-white rounded-xl shadow-md border border-slate-200 hover:shadow-lg transition-all overflow-hidden"
+                className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-all overflow-hidden"
               >
                 {/* Card Header - Sempre Visível */}
-                <div 
-                  className="p-5 cursor-pointer hover:bg-slate-50 transition-colors"
-                  onClick={() => toggleCard(edit.id!)}
-                >
+                <div className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 flex-1">
                       <div className="w-10 h-10 bg-gradient-to-br from-[#108bd1] to-[#085ba7] rounded-lg flex items-center justify-center flex-shrink-0">
@@ -564,7 +562,7 @@ export default function CampaignEditsPage() {
                           {edit.nome_campanha}
                         </h3>
                         <div className="flex items-center space-x-2 mt-1">
-                          <span className="px-2 py-0.5 bg-[#085ba7] text-white text-xs font-bold rounded-full">
+                          <span className="px-2 py-1 bg-[#085ba7] text-white text-xs font-bold rounded">
                             {edit.tipo_campanha}
                           </span>
                           <span className="text-xs text-slate-500">
@@ -575,54 +573,57 @@ export default function CampaignEditsPage() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(edit);
-                        }}
-                        className="p-2 text-slate-600 hover:text-[#085ba7] hover:bg-blue-50 rounded-lg transition-colors"
+                        onClick={() => handleEdit(edit)}
+                        className="p-2 text-[#085ba7] hover:bg-blue-50 rounded-lg transition-colors"
                         title="Editar"
                       >
                         <Edit className="w-5 h-5" />
                       </button>
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          edit.id && deleteEdit(edit.id);
-                        }}
-                        className="p-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        onClick={() => edit.id && deleteEdit(edit.id)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                         title="Excluir"
                       >
                         <Trash2 className="w-5 h-5" />
                       </button>
-                      <div className="w-8 h-8 flex items-center justify-center text-slate-400">
-                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                      </div>
+                      <button
+                        onClick={() => edit.id && toggleCard(edit.id)}
+                        className="p-2 text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
+                      >
+                        {isExpanded ? (
+                          <ChevronUp className="w-5 h-5" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5" />
+                        )}
+                      </button>
                     </div>
                   </div>
                 </div>
 
-                {/* Card Body - Expansível */}
+                {/* Card Content - Expansível */}
                 {isExpanded && (
-                  <div className="px-5 pb-5 pt-2 border-t border-slate-200 space-y-4 animate-in slide-in-from-top-2 duration-200">
-                    {/* Nível de Edição */}
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-semibold text-slate-700">Nível:</span>
-                      <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-semibold rounded-full">
+                  <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-4 animate-in slide-in-from-top duration-200">
+                    <div className="flex items-center space-x-3">
+                      <span className="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-semibold rounded-full">
                         {edit.nivel_edicao}
                       </span>
+                      {edit.data_revisao && (
+                        <span className="flex items-center space-x-1 text-sm text-slate-600">
+                          <Calendar className="w-4 h-4" />
+                          <span>Revisão: {new Date(edit.data_revisao).toLocaleDateString('pt-BR')}</span>
+                        </span>
+                      )}
                     </div>
 
-                    {/* Descrição */}
                     <div>
-                      <h4 className="text-sm font-bold text-slate-700 mb-1">Descrição da Alteração:</h4>
-                      <p className="text-slate-600 whitespace-pre-wrap text-sm">{edit.descricao_alteracao}</p>
+                      <h4 className="text-sm font-bold text-slate-700 mb-1">Descrição:</h4>
+                      <p className="text-slate-600 whitespace-pre-wrap">{edit.descricao_alteracao}</p>
                     </div>
 
-                    {/* Imagens */}
                     {edit.imagens_alteracao && edit.imagens_alteracao.length > 0 && (
                       <div>
                         <h4 className="text-sm font-bold text-slate-700 mb-2">Evidências:</h4>
-                        <div className="grid grid-cols-4 gap-3">
+                        <div className="grid grid-cols-4 gap-2">
                           {edit.imagens_alteracao.map((img, index) => (
                             <div 
                               key={index}
@@ -632,10 +633,10 @@ export default function CampaignEditsPage() {
                               <img
                                 src={img}
                                 alt={`Evidência ${index + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border-2 border-slate-200 hover:border-[#108bd1] transition-colors"
+                                className="w-full h-24 object-cover rounded-lg border-2 border-slate-200 group-hover:border-[#108bd1] transition-colors"
                               />
-                              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded-lg flex items-center justify-center">
-                                <ZoomIn className="w-6 h-6 text-white" />
+                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-lg transition-all flex items-center justify-center">
+                                <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
                               </div>
                             </div>
                           ))}
@@ -643,29 +644,15 @@ export default function CampaignEditsPage() {
                       </div>
                     )}
 
-                    {/* Motivo */}
                     <div>
                       <h4 className="text-sm font-bold text-slate-700 mb-1">Motivo:</h4>
-                      <p className="text-slate-600 whitespace-pre-wrap text-sm">{edit.motivo}</p>
+                      <p className="text-slate-600 whitespace-pre-wrap">{edit.motivo}</p>
                     </div>
 
-                    {/* Revisão */}
-                    {(edit.data_revisao || edit.observacoes_revisao) && (
-                      <div className="bg-blue-50 border-l-4 border-[#108bd1] p-4 rounded">
-                        {edit.data_revisao && (
-                          <div className="flex items-center space-x-2 mb-2">
-                            <Calendar className="w-4 h-4 text-[#085ba7]" />
-                            <span className="text-sm font-semibold text-[#085ba7]">
-                              Revisão: {new Date(edit.data_revisao).toLocaleDateString('pt-BR')}
-                            </span>
-                          </div>
-                        )}
-                        {edit.observacoes_revisao && (
-                          <>
-                            <h4 className="text-sm font-bold text-[#085ba7] mb-1">Observações:</h4>
-                            <p className="text-slate-700 whitespace-pre-wrap text-sm">{edit.observacoes_revisao}</p>
-                          </>
-                        )}
+                    {edit.observacoes_revisao && (
+                      <div className="bg-blue-50 border-l-4 border-[#108bd1] p-3 rounded">
+                        <h4 className="text-sm font-bold text-[#085ba7] mb-1">Observações da Revisão:</h4>
+                        <p className="text-slate-700 whitespace-pre-wrap">{edit.observacoes_revisao}</p>
                       </div>
                     )}
                   </div>

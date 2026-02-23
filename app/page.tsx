@@ -2,8 +2,8 @@ import Link from "next/link";
 import { 
   Users, Target, PieChart, Calendar, 
   TrendingUp, BarChart3, ArrowRight, Edit3 // ← Adicionar Edit3
-  import { CheckSquare }
 } from "lucide-react";
+import { CheckSquare } from "lucide-react";
 
 const tools = [
   {

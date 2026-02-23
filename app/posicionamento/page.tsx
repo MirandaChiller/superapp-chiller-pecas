@@ -158,7 +158,7 @@ ${declaracaoText}
           <button
             onClick={saveData}
             disabled={saving}
-            className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
+            className="flex items-center space-x-2 px-6 py-2 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
             <span>{saving ? "Salvando..." : "Salvar"}</span>
@@ -173,7 +173,7 @@ ${declaracaoText}
             onClick={() => setStep(s)}
             className={`flex-1 py-4 px-6 rounded-lg font-medium transition-all ${
               step === s
-                ? "bg-gradient-to-r from-orange-500 to-red-600 text-white shadow-lg"
+                ? "bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white shadow-lg"
                 : "bg-white text-slate-600 border border-slate-200 hover:border-orange-300"
             }`}
           >
@@ -245,7 +245,7 @@ ${declaracaoText}
             <div className="flex justify-end">
               <button
                 onClick={() => setStep(2)}
-                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all"
               >
                 <span>Próxima Etapa</span>
                 <ChevronRight className="w-5 h-5" />
@@ -322,7 +322,7 @@ ${declaracaoText}
               </button>
               <button
                 onClick={() => setStep(3)}
-                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-lg hover:shadow-lg transition-all"
+                className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all"
               >
                 <span>Próxima Etapa</span>
                 <ChevronRight className="w-5 h-5" />

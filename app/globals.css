@@ -36,3 +36,26 @@ body {
   color: var(--foreground);
   font-family: 'Quicksand', Arial, Helvetica, sans-serif;
 }
+/* Aumentar contraste de placeholders e selects */
+input::placeholder,
+textarea::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+select {
+  color: #1e293b !important;
+}
+
+select option {
+  color: #1e293b !important;
+  background: white !important;
+}
+
+input[type="text"],
+input[type="date"],
+input[type="email"],
+textarea,
+select {
+  color: #1e293b !important;
+}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn } from "lucide-react";
+import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn, CheckCircle, AlertCircle } from "lucide-react";
 
 interface CampaignEdit {
   id?: string;
@@ -15,6 +15,7 @@ interface CampaignEdit {
   motivo: string;
   data_revisao: string;
   observacoes_revisao: string;
+  data_revisao_concluida?: string;
   created_at?: string;
 }
 
@@ -43,6 +44,7 @@ export default function CampaignEditsPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filterTipo, setFilterTipo] = useState<string>("Todos");
+  const [showPendentes, setShowPendentes] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -64,12 +66,22 @@ export default function CampaignEditsPage() {
   }, []);
 
   useEffect(() => {
-    if (filterTipo === "Todos") {
-      setFilteredEdits(edits);
-    } else {
-      setFilteredEdits(edits.filter(edit => edit.tipo_campanha === filterTipo));
+    let filtered = edits;
+    
+    if (filterTipo !== "Todos") {
+      filtered = filtered.filter(edit => edit.tipo_campanha === filterTipo);
     }
-  }, [filterTipo, edits]);
+    
+    if (showPendentes) {
+      filtered = filtered.filter(edit => 
+        edit.data_revisao && 
+        !edit.data_revisao_concluida &&
+        new Date(edit.data_revisao) <= new Date()
+      );
+    }
+    
+    setFilteredEdits(filtered);
+  }, [filterTipo, edits, showPendentes]);
 
   async function loadEdits() {
     setLoading(true);
@@ -91,7 +103,6 @@ export default function CampaignEditsPage() {
 
     try {
       if (editingId) {
-        // Atualizar edição existente
         const { error } = await supabase
           .from("campaign_edits")
           .update({
@@ -113,7 +124,6 @@ export default function CampaignEditsPage() {
           resetForm();
         }
       } else {
-        // Criar nova edição
         const { error } = await supabase
           .from("campaign_edits")
           .insert({
@@ -172,6 +182,19 @@ export default function CampaignEditsPage() {
     setShowForm(true);
   }
 
+  async function marcarComoRevisado(id: string) {
+    const hoje = new Date().toISOString().split('T')[0];
+    
+    const { error } = await supabase
+      .from("campaign_edits")
+      .update({ data_revisao_concluida: hoje })
+      .eq("id", id);
+    
+    if (!error) {
+      await loadEdits();
+    }
+  }
+
   async function handleImagePaste(e: React.ClipboardEvent) {
     const items = e.clipboardData?.items;
     if (!items) return;
@@ -226,9 +249,24 @@ export default function CampaignEditsPage() {
     });
   }
 
+  function isPendente(edit: CampaignEdit) {
+    return edit.data_revisao && 
+           !edit.data_revisao_concluida && 
+           new Date(edit.data_revisao) <= new Date();
+  }
+
+  function getDiasAtraso(dataRevisao: string) {
+    const hoje = new Date();
+    const revisao = new Date(dataRevisao);
+    const diff = Math.floor((hoje.getTime() - revisao.getTime()) / (1000 * 60 * 60 * 24));
+    return diff;
+  }
+
   const niveisDisponiveis = formData.tipo_campanha === "Pesquisa" 
     ? NIVEIS_PESQUISA 
     : NIVEIS_PERFORMANCE_MAX;
+
+  const pendentesCount = edits.filter(isPendente).length;
 
   return (
     <div className="space-y-6">
@@ -255,11 +293,63 @@ export default function CampaignEditsPage() {
         </button>
       </div>
 
+      {/* Alerta de Pendentes */}
+      {pendentesCount > 0 && !showPendentes && (
+        <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <AlertCircle className="w-6 h-6 text-red-600" />
+              <div>
+                <h3 className="font-bold text-red-900">
+                  {pendentesCount} edição{pendentesCount !== 1 ? 'ões' : ''} pendente{pendentesCount !== 1 ? 's' : ''} de revisão
+                </h3>
+                <p className="text-sm text-red-700">Existem campanhas aguardando revisão</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPendentes(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-semibold"
+            >
+              Ver Pendentes
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Filtros */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-slate-200">
         <div className="flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center space-x-4">
             <span className="text-sm font-semibold text-slate-700">Filtrar:</span>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setShowPendentes(false)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  !showPendentes
+                    ? "bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white shadow-md"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                Todas
+              </button>
+              <button
+                onClick={() => setShowPendentes(true)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center space-x-1 ${
+                  showPendentes
+                    ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+              >
+                <AlertCircle className="w-4 h-4" />
+                <span>Pendentes</span>
+                {pendentesCount > 0 && (
+                  <span className="bg-white text-red-600 px-2 py-0.5 rounded-full text-xs font-bold">
+                    {pendentesCount}
+                  </span>
+                )}
+              </button>
+            </div>
+            <div className="h-6 w-px bg-slate-300" />
             <div className="flex space-x-2">
               {["Todos", "Pesquisa", "Performance Max"].map(tipo => (
                 <button
@@ -303,7 +393,6 @@ export default function CampaignEditsPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Nome da Campanha */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Nome da Campanha *
@@ -318,7 +407,6 @@ export default function CampaignEditsPage() {
                 />
               </div>
 
-              {/* Tipo de Campanha */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Tipo de Campanha *
@@ -338,7 +426,6 @@ export default function CampaignEditsPage() {
                 </select>
               </div>
 
-              {/* Nível de Edição */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Nível de Edição *
@@ -356,7 +443,6 @@ export default function CampaignEditsPage() {
                 </select>
               </div>
 
-              {/* Data da Alteração */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Data da Alteração *
@@ -370,7 +456,6 @@ export default function CampaignEditsPage() {
                 />
               </div>
 
-              {/* Descrição da Alteração */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Descrição da Alteração *
@@ -390,7 +475,6 @@ export default function CampaignEditsPage() {
                     <span>Dica: Cole imagens diretamente no campo acima (Ctrl+V)</span>
                   </p>
 
-                  {/* Preview de Imagens */}
                   {formData.imagens_alteracao.length > 0 && (
                     <div className="grid grid-cols-3 gap-3">
                       {formData.imagens_alteracao.map((img, index) => (
@@ -414,7 +498,6 @@ export default function CampaignEditsPage() {
                 </div>
               </div>
 
-              {/* Motivo */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Motivo da Alteração *
@@ -429,7 +512,6 @@ export default function CampaignEditsPage() {
                 />
               </div>
 
-              {/* Data de Revisão */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Data de Revisão
@@ -442,7 +524,6 @@ export default function CampaignEditsPage() {
                 />
               </div>
 
-              {/* Observações da Revisão */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Observações da Revisão
@@ -456,7 +537,6 @@ export default function CampaignEditsPage() {
                 />
               </div>
 
-              {/* Botões */}
               <div className="flex space-x-4 pt-4">
                 <button
                   type="button"
@@ -513,7 +593,7 @@ export default function CampaignEditsPage() {
         </div>
       )}
 
-      {/* Lista de Edições - CARDS RECOLHÍVEIS */}
+      {/* Lista de Edições */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="w-12 h-12 border-4 border-[#108bd1] border-t-transparent rounded-full animate-spin" />
@@ -522,56 +602,89 @@ export default function CampaignEditsPage() {
         <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-300">
           <FileText className="w-16 h-16 text-slate-400 mx-auto mb-4" />
           <h3 className="text-xl font-bold text-slate-900 mb-2">
-            {filterTipo === "Todos" ? "Nenhuma edição registrada" : `Nenhuma edição ${filterTipo}`}
+            {showPendentes ? "Nenhuma edição pendente" : "Nenhuma edição registrada"}
           </h3>
           <p className="text-slate-600 mb-6">
-            {filterTipo === "Todos" 
-              ? "Comece registrando sua primeira edição de campanha" 
-              : `Não há edições do tipo "${filterTipo}"`}
+            {showPendentes 
+              ? "Todas as edições foram revisadas!" 
+              : "Comece registrando sua primeira edição de campanha"}
           </p>
-          <button
-            onClick={() => {
-              resetForm();
-              setShowForm(true);
-            }}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nova Edição</span>
-          </button>
+          {!showPendentes && (
+            <button
+              onClick={() => {
+                resetForm();
+                setShowForm(true);
+              }}
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Nova Edição</span>
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid gap-4">
           {filteredEdits.map((edit) => {
             const isExpanded = expandedCards.has(edit.id || "");
+            const pendente = isPendente(edit);
+            const diasAtraso = edit.data_revisao ? getDiasAtraso(edit.data_revisao) : 0;
             
             return (
               <div 
                 key={edit.id} 
-                className="bg-white rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-all overflow-hidden"
+                className={`bg-white rounded-xl shadow-sm border-2 hover:shadow-md transition-all overflow-hidden ${
+                  pendente ? 'border-red-500' : 'border-slate-200'
+                }`}
               >
-                {/* Card Header - Sempre Visível */}
                 <div className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-4 flex-1">
-                      <div className="w-10 h-10 bg-gradient-to-br from-[#108bd1] to-[#085ba7] rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Target className="w-5 h-5 text-white" />
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                        pendente 
+                          ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse' 
+                          : 'bg-gradient-to-br from-[#108bd1] to-[#085ba7]'
+                      }`}>
+                        {pendente ? (
+                          <AlertCircle className="w-5 h-5 text-white" />
+                        ) : (
+                          <Target className="w-5 h-5 text-white" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <h3 className="text-lg font-bold text-slate-900 truncate">
                           {edit.nome_campanha}
                         </h3>
-                        <div className="flex items-center space-x-2 mt-1">
+                        <div className="flex items-center space-x-2 mt-1 flex-wrap gap-1">
                           <span className="px-2 py-1 bg-[#085ba7] text-white text-xs font-bold rounded">
                             {edit.tipo_campanha}
                           </span>
                           <span className="text-xs text-slate-500">
                             {new Date(edit.data_alteracao).toLocaleDateString('pt-BR')}
                           </span>
+                          {pendente && (
+                            <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded animate-pulse">
+                              {diasAtraso === 0 ? 'HOJE!' : `${diasAtraso} dia${diasAtraso > 1 ? 's' : ''} atraso`}
+                            </span>
+                          )}
+                          {edit.data_revisao_concluida && (
+                            <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded flex items-center space-x-1">
+                              <CheckCircle className="w-3 h-3" />
+                              <span>Revisado {new Date(edit.data_revisao_concluida).toLocaleDateString('pt-BR')}</span>
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
+                      {pendente && !isExpanded && (
+                        <button
+                          onClick={() => edit.id && marcarComoRevisado(edit.id)}
+                          className="p-2 bg-green-500 text-white hover:bg-green-600 rounded-lg transition-colors"
+                          title="Marcar como Revisado"
+                        >
+                          <CheckCircle className="w-5 h-5" />
+                        </button>
+                      )}
                       <button
                         onClick={() => handleEdit(edit)}
                         className="p-2 text-[#085ba7] hover:bg-blue-50 rounded-lg transition-colors"
@@ -600,7 +713,6 @@ export default function CampaignEditsPage() {
                   </div>
                 </div>
 
-                {/* Card Content - Expansível */}
                 {isExpanded && (
                   <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-4 animate-in slide-in-from-top duration-200">
                     <div className="flex items-center space-x-3">
@@ -654,6 +766,16 @@ export default function CampaignEditsPage() {
                         <h4 className="text-sm font-bold text-[#085ba7] mb-1">Observações da Revisão:</h4>
                         <p className="text-slate-700 whitespace-pre-wrap">{edit.observacoes_revisao}</p>
                       </div>
+                    )}
+
+                    {pendente && (
+                      <button
+                        onClick={() => edit.id && marcarComoRevisado(edit.id)}
+                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors font-semibold"
+                      >
+                        <CheckCircle className="w-5 h-5" />
+                        <span>Marcar como Revisado</span>
+                      </button>
                     )}
                   </div>
                 )}

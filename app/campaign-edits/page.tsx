@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn, CheckCircle, AlertCircle, Copy, Check } from "lucide-react";
 
 interface CampaignEdit {
   id?: string;
@@ -48,6 +48,7 @@ export default function CampaignEditsPage() {
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CampaignEdit>({
     nome_campanha: "",
@@ -246,6 +247,27 @@ export default function CampaignEditsPage() {
         newSet.add(id);
       }
       return newSet;
+    });
+  }
+
+  function copiarConteudo(edit: CampaignEdit) {
+    const formatarData = (data: string) =>
+      data ? new Date(data).toLocaleDateString('pt-BR') : "";
+
+    const texto = [
+      `Nome da campanha: ${edit.nome_campanha}`,
+      `Tipo de Campanha: ${edit.tipo_campanha}`,
+      `Nível de edição: ${edit.nivel_edicao}`,
+      `Data da Alteração: ${formatarData(edit.data_alteracao)}`,
+      `Descrição da alteração: ${edit.descricao_alteracao}`,
+      `Motivo da Alteração: ${edit.motivo}`,
+      `Data da revisão: ${edit.data_revisao ? formatarData(edit.data_revisao) : "(Caso não tenha, deixar vazio)"}`,
+      `Observação da Revisão: ${edit.observacoes_revisao || "(Caso não tenha, deixar vazio)"}`,
+    ].join("\n\n");
+
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiedId(edit.id || null);
+      setTimeout(() => setCopiedId(null), 2000);
     });
   }
 
@@ -685,6 +707,21 @@ export default function CampaignEditsPage() {
                           <CheckCircle className="w-5 h-5" />
                         </button>
                       )}
+                      <button
+                        onClick={() => copiarConteudo(edit)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          copiedId === edit.id
+                            ? "text-green-600 bg-green-50"
+                            : "text-slate-500 hover:bg-slate-50"
+                        }`}
+                        title="Copiar conteúdo"
+                      >
+                        {copiedId === edit.id ? (
+                          <Check className="w-5 h-5" />
+                        ) : (
+                          <Copy className="w-5 h-5" />
+                        )}
+                      </button>
                       <button
                         onClick={() => handleEdit(edit)}
                         className="p-2 text-[#085ba7] hover:bg-blue-50 rounded-lg transition-colors"

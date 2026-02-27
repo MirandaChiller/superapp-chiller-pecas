@@ -44,6 +44,8 @@ export default function CampaignEditsPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filterTipo, setFilterTipo] = useState<string>("Todos");
+  const [filterDataDe, setFilterDataDe] = useState<string>("");
+  const [filterDataAte, setFilterDataAte] = useState<string>("");
   const [showPendentes, setShowPendentes] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -68,21 +70,55 @@ export default function CampaignEditsPage() {
 
   useEffect(() => {
     let filtered = edits;
-    
+
     if (filterTipo !== "Todos") {
       filtered = filtered.filter(edit => edit.tipo_campanha === filterTipo);
     }
-    
+
     if (showPendentes) {
-      filtered = filtered.filter(edit => 
-        edit.data_revisao && 
+      filtered = filtered.filter(edit =>
+        edit.data_revisao &&
         !edit.data_revisao_concluida &&
         new Date(edit.data_revisao) <= new Date()
       );
     }
-    
+
+    if (filterDataDe) {
+      filtered = filtered.filter(edit => edit.data_alteracao >= filterDataDe);
+    }
+
+    if (filterDataAte) {
+      filtered = filtered.filter(edit => edit.data_alteracao <= filterDataAte);
+    }
+
     setFilteredEdits(filtered);
-  }, [filterTipo, edits, showPendentes]);
+  }, [filterTipo, edits, showPendentes, filterDataDe, filterDataAte]);
+
+  // Open edit form from URL param (deep link: /campaign-edits?edit=<id>)
+  useEffect(() => {
+    if (edits.length > 0 && !showForm) {
+      const editId = new URLSearchParams(window.location.search).get("edit");
+      if (editId) {
+        const found = edits.find(e => e.id === editId);
+        if (found) {
+          setFormData({
+            nome_campanha: found.nome_campanha,
+            tipo_campanha: found.tipo_campanha,
+            nivel_edicao: found.nivel_edicao,
+            data_alteracao: found.data_alteracao,
+            descricao_alteracao: found.descricao_alteracao,
+            imagens_alteracao: found.imagens_alteracao || [],
+            motivo: found.motivo,
+            data_revisao: found.data_revisao || "",
+            observacoes_revisao: found.observacoes_revisao || ""
+          });
+          setEditingId(found.id || null);
+          setShowForm(true);
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edits]);
 
   async function loadEdits() {
     setLoading(true);
@@ -121,8 +157,7 @@ export default function CampaignEditsPage() {
 
         if (!error) {
           await loadEdits();
-          setShowForm(false);
-          resetForm();
+          closeForm();
         }
       } else {
         const { error } = await supabase
@@ -141,8 +176,7 @@ export default function CampaignEditsPage() {
 
         if (!error) {
           await loadEdits();
-          setShowForm(false);
-          resetForm();
+          closeForm();
         }
       }
     } catch (error) {
@@ -181,6 +215,15 @@ export default function CampaignEditsPage() {
     });
     setEditingId(edit.id || null);
     setShowForm(true);
+    if (edit.id) {
+      window.history.pushState({}, "", `/campaign-edits?edit=${edit.id}`);
+    }
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    resetForm();
+    window.history.pushState({}, "", "/campaign-edits");
   }
 
   async function marcarComoRevisado(id: string) {
@@ -392,6 +435,37 @@ export default function CampaignEditsPage() {
             {filteredEdits.length} edição{filteredEdits.length !== 1 ? 'ões' : ''}
           </div>
         </div>
+
+        {/* Filtro de data */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-semibold text-slate-700">Data da alteração:</span>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500">De</label>
+            <input
+              type="date"
+              value={filterDataDe}
+              onChange={e => setFilterDataDe(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500">Até</label>
+            <input
+              type="date"
+              value={filterDataAte}
+              onChange={e => setFilterDataAte(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+            />
+          </div>
+          {(filterDataDe || filterDataAte) && (
+            <button
+              onClick={() => { setFilterDataDe(""); setFilterDataAte(""); }}
+              className="px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              Limpar datas
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Modal de Formulário */}
@@ -403,10 +477,7 @@ export default function CampaignEditsPage() {
                 {editingId ? "Editar Registro" : "Registrar Nova Edição"}
               </h2>
               <button
-                onClick={() => {
-                  setShowForm(false);
-                  resetForm();
-                }}
+                onClick={closeForm}
                 disabled={saving}
                 className="text-slate-400 hover:text-slate-600 disabled:opacity-50"
               >
@@ -562,10 +633,7 @@ export default function CampaignEditsPage() {
               <div className="flex space-x-4 pt-4">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    resetForm();
-                  }}
+                  onClick={closeForm}
                   disabled={saving}
                   className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium disabled:opacity-50"
                 >
@@ -679,6 +747,9 @@ export default function CampaignEditsPage() {
                         <div className="flex items-center space-x-2 mt-1 flex-wrap gap-1">
                           <span className="px-2 py-1 bg-[#085ba7] text-white text-xs font-bold rounded">
                             {edit.tipo_campanha}
+                          </span>
+                          <span className="px-2 py-1 bg-slate-600 text-white text-xs font-medium rounded">
+                            {edit.nivel_edicao}
                           </span>
                           <span className="text-xs text-slate-500">
                             {new Date(edit.data_alteracao).toLocaleDateString('pt-BR')}

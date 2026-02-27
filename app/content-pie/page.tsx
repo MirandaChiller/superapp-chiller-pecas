@@ -13,7 +13,7 @@ export default function ContentPiePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedId, setSavedId] = useState<string | null>(null);
-  const [postsPorDia, setPostsPorDia] = useState(3);
+  const [postsPorSemana, setPostsPorSemana] = useState(3);
   const [temas, setTemas] = useState<Tema[]>([
     { nome: "Produtos e Lançamentos", percentual: 30 },
     { nome: "Educacional e Dicas", percentual: 25 },
@@ -36,7 +36,7 @@ export default function ContentPiePage() {
     
     if (data) {
       setSavedId(data.id);
-      setPostsPorDia(data.posts_por_dia || 3);
+      setPostsPorSemana(data.posts_por_dia || 3);
       if (data.temas && data.temas.length > 0) {
         setTemas(data.temas);
       }
@@ -48,7 +48,7 @@ export default function ContentPiePage() {
     setSaving(true);
     
     const dataToSave = {
-      posts_por_dia: postsPorDia,
+      posts_por_dia: postsPorSemana,
       temas: temas,
     };
 
@@ -90,7 +90,8 @@ export default function ContentPiePage() {
   }
 
   const totalPercentual = temas.reduce((sum, t) => sum + t.percentual, 0);
-  const totalPostsMes = postsPorDia * 30;
+  // 52 semanas / 12 meses ≈ 4.33 semanas por mês
+  const totalPostsMes = Math.round(postsPorSemana * (52 / 12));
 
   if (loading) {
     return (
@@ -120,19 +121,37 @@ export default function ContentPiePage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-6">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Quantos posts por dia?
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Frequência de publicação
             </label>
-            <input
-              type="number"
-              min="1"
-              max="10"
-              value={postsPorDia}
-              onChange={(e) => setPostsPorDia(parseInt(e.target.value) || 1)}
-              className="w-32 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-            />
-            <p className="text-sm text-slate-500 mt-1">
-              = {totalPostsMes} posts/mês
+            <div className="flex items-end gap-6 flex-wrap">
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Posts por semana</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={postsPorSemana}
+                  onChange={(e) => setPostsPorSemana(parseInt(e.target.value) || 1)}
+                  className="w-32 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-slate-500 mb-1">Posts por mês (calculado)</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={totalPostsMes}
+                  onChange={(e) => {
+                    const mes = parseInt(e.target.value) || 1;
+                    setPostsPorSemana(Math.round(mes / (52 / 12)));
+                  }}
+                  className="w-32 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              {postsPorSemana} post{postsPorSemana !== 1 ? 's' : ''}/semana × 4,33 semanas = {totalPostsMes} posts/mês
             </p>
           </div>
 

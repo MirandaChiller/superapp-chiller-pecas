@@ -145,7 +145,7 @@ export default function IndicadoresPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="w-16 h-16 border-4 border-[#ff901c] border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 border-4 border-[#085ba7] border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -165,7 +165,7 @@ export default function IndicadoresPage() {
             }
             setShowForm(true);
           }}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all"
+          className="flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all"
         >
           <Plus className="w-5 h-5" />
           <span>Nova Métrica</span>
@@ -341,7 +341,7 @@ export default function IndicadoresPage() {
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
+                  className="flex-1 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg"
                 >
                   Salvar Métrica
                 </button>
@@ -445,7 +445,7 @@ export default function IndicadoresPage() {
           {posts.length > 0 && (
             <button
               onClick={() => setShowForm(true)}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg"
             >
               <Plus className="w-5 h-5" />
               <span>Adicionar Métrica</span>

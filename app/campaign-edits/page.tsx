@@ -338,7 +338,7 @@ export default function CampaignEditsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#085ba7] to-[#108bd1] rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-[#085ba7] rounded-xl flex items-center justify-center">
             <Target className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -351,7 +351,7 @@ export default function CampaignEditsPage() {
             resetForm();
             setShowForm(true);
           }}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+          className="flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
         >
           <Plus className="w-5 h-5" />
           <span>Nova Edição</span>
@@ -391,7 +391,7 @@ export default function CampaignEditsPage() {
                 onClick={() => setShowPendentes(false)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   !showPendentes
-                    ? "bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white shadow-md"
+                    ? "bg-[#085ba7] text-white shadow-md"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
@@ -422,7 +422,7 @@ export default function CampaignEditsPage() {
                   onClick={() => setFilterTipo(tipo)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     filterTipo === tipo
-                      ? "bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white shadow-md"
+                      ? "bg-[#085ba7] text-white shadow-md"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
@@ -445,7 +445,7 @@ export default function CampaignEditsPage() {
               type="date"
               value={filterDataDe}
               onChange={e => setFilterDataDe(e.target.value)}
-              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -454,7 +454,7 @@ export default function CampaignEditsPage() {
               type="date"
               value={filterDataAte}
               onChange={e => setFilterDataAte(e.target.value)}
-              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
             />
           </div>
           {(filterDataDe || filterDataAte) && (
@@ -494,7 +494,7 @@ export default function CampaignEditsPage() {
                   type="text"
                   value={formData.nome_campanha}
                   onChange={(e) => setFormData({ ...formData, nome_campanha: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent font-medium"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent font-medium"
                   placeholder="Ex: Black Friday 2024 - Peças HVAC"
                   required
                 />
@@ -511,7 +511,7 @@ export default function CampaignEditsPage() {
                     tipo_campanha: e.target.value,
                     nivel_edicao: ""
                   })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent font-medium"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent font-medium"
                   required
                 >
                   <option value="Pesquisa">Pesquisa</option>
@@ -526,7 +526,7 @@ export default function CampaignEditsPage() {
                 <select
                   value={formData.nivel_edicao}
                   onChange={(e) => setFormData({ ...formData, nivel_edicao: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent font-medium"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent font-medium"
                   required
                 >
                   <option value="">Selecione o nível...</option>
@@ -544,7 +544,7 @@ export default function CampaignEditsPage() {
                   type="date"
                   value={formData.data_alteracao}
                   onChange={(e) => setFormData({ ...formData, data_alteracao: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                   required
                 />
               </div>
@@ -559,7 +559,7 @@ export default function CampaignEditsPage() {
                     onChange={(e) => setFormData({ ...formData, descricao_alteracao: e.target.value })}
                     onPaste={handleImagePaste}
                     rows={4}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                     placeholder="Descreva a alteração realizada... (Ctrl+V para colar imagens)"
                     required
                   />
@@ -599,7 +599,7 @@ export default function CampaignEditsPage() {
                   value={formData.motivo}
                   onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                   placeholder="Por que esta alteração foi necessária?"
                   required
                 />
@@ -613,7 +613,7 @@ export default function CampaignEditsPage() {
                   type="date"
                   value={formData.data_revisao}
                   onChange={(e) => setFormData({ ...formData, data_revisao: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                 />
               </div>
 
@@ -625,7 +625,7 @@ export default function CampaignEditsPage() {
                   value={formData.observacoes_revisao}
                   onChange={(e) => setFormData({ ...formData, observacoes_revisao: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                   placeholder="Resultados observados após a alteração..."
                 />
               </div>
@@ -686,7 +686,7 @@ export default function CampaignEditsPage() {
       {/* Lista de Edições */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="w-12 h-12 border-4 border-[#108bd1] border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-[#085ba7] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filteredEdits.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-300">
@@ -705,7 +705,7 @@ export default function CampaignEditsPage() {
                 resetForm();
                 setShowForm(true);
               }}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
             >
               <Plus className="w-5 h-5" />
               <span>Nova Edição</span>
@@ -732,7 +732,7 @@ export default function CampaignEditsPage() {
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         pendente 
                           ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse' 
-                          : 'bg-gradient-to-br from-[#108bd1] to-[#085ba7]'
+                          : 'bg-[#085ba7]'
                       }`}>
                         {pendente ? (
                           <AlertCircle className="w-5 h-5 text-white" />

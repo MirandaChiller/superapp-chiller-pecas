@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { 
-  Users, Target, PieChart, Calendar, 
-  TrendingUp, BarChart3, ArrowRight, Edit3 // ← Adicionar Edit3
+import {
+  Users, Target, PieChart, Calendar,
+  TrendingUp, BarChart3, ArrowRight, Edit3
 } from "lucide-react";
 import { CheckSquare } from "lucide-react";
 
@@ -11,7 +11,6 @@ const tools = [
     description: "Crie personas detalhadas com IA para entender melhor seu público-alvo",
     href: "/personas",
     icon: Users,
-    color: "from-[#085ba7] to-[#108bd1]",
     step: 1,
   },
   {
@@ -19,7 +18,6 @@ const tools = [
     description: "Defina Canvas, IKIGAI e Declaração de posicionamento estratégico",
     href: "/posicionamento",
     icon: Target,
-    color: "from-[#108bd1] to-[#085ba7]",
     step: 2,
   },
   {
@@ -27,7 +25,6 @@ const tools = [
     description: "Planeje distribuição de conteúdo e volume de posts mensais",
     href: "/content-pie",
     icon: PieChart,
-    color: "from-[#ff901c] to-[#085ba7]",
     step: 3,
   },
   {
@@ -35,33 +32,29 @@ const tools = [
     description: "Organize posts com objetivos, formatos e calendário editorial",
     href: "/feed",
     icon: Calendar,
-    color: "from-[#085ba7] to-[#ff901c]",
     step: 4,
   },
   {
-  name: "Gerenciamento de Tarefas",
-  description: "Kanban para organizar e acompanhar tarefas da equipe",
-  href: "/metrics-matcher",
-  icon: CheckSquare,
-  color: "from-[#ff901c] to-[#108bd1]",
-  step: 5,
+    name: "Gerenciamento de Tarefas",
+    description: "Kanban para organizar e acompanhar tarefas da equipe",
+    href: "/metrics-matcher",
+    icon: CheckSquare,
+    step: 5,
   },
   {
     name: "Indicadores de Performance",
     description: "Acompanhe métricas e score de posts publicados",
     href: "/indicadores",
     icon: BarChart3,
-    color: "from-[#108bd1] to-[#ff901c]",
     step: 6,
   },
   {
-  name: "Edições em Campanhas",
-  description: "Registre alterações em campanhas Google Ads com evidências",
-  href: "/campaign-edits",
-  icon: Edit3,
-  color: "from-[#085ba7] to-[#ff901c]",
-  step: 7,
-},
+    name: "Edições em Campanhas",
+    description: "Registre alterações em campanhas Google Ads com evidências",
+    href: "/campaign-edits",
+    icon: Edit3,
+    step: 7,
+  },
 ];
 
 export default function Home() {
@@ -72,7 +65,7 @@ export default function Home() {
           Bem-vindo ao Superapp Chiller Peças
         </h1>
         <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-          Plataforma completa de inteligência de marketing integrada. 
+          Plataforma completa de inteligência de marketing integrada.
           Gerencie personas, posicionamento, conteúdo e métricas em um único lugar.
         </p>
       </div>
@@ -80,36 +73,36 @@ export default function Home() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {tools.map((tool) => {
           const Icon = tool.icon;
-          
+
           return (
             <Link
               key={tool.name}
               href={tool.href}
-              className="group relative bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-slate-200 hover:border-slate-300 overflow-hidden"
+              className="group relative bg-white rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 border border-slate-200 hover:border-[#085ba7] overflow-hidden"
             >
-              <div className="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 opacity-10">
-                <div className={`w-full h-full rounded-full bg-gradient-to-br ${tool.color}`} />
+              <div className="absolute top-0 right-0 w-32 h-32 -mr-8 -mt-8 opacity-5">
+                <div className="w-full h-full rounded-full bg-[#085ba7]" />
               </div>
-              
+
               <div className="relative space-y-4">
                 <div className="flex items-start justify-between">
-                  <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${tool.color} flex items-center justify-center shadow-lg`}>
+                  <div className="w-14 h-14 rounded-xl bg-[#085ba7] flex items-center justify-center shadow-lg">
                     <Icon className="w-7 h-7 text-white" />
                   </div>
                   <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 text-slate-600 text-sm font-bold">
                     {tool.step}
                   </span>
                 </div>
-                
+
                 <div className="space-y-2">
-                  <h3 className="text-xl font-bold text-slate-900 group-hover:text-[#ff901c] transition-colors">
+                  <h3 className="text-xl font-bold text-slate-900 group-hover:text-[#085ba7] transition-colors">
                     {tool.name}
                   </h3>
                   <p className="text-sm text-slate-600 leading-relaxed">
                     {tool.description}
                   </p>
                 </div>
-                
+
                 <div className="flex items-center text-[#ff901c] font-semibold text-sm group-hover:translate-x-1 transition-transform">
                   Acessar ferramenta
                   <ArrowRight className="w-4 h-4 ml-2" />
@@ -120,7 +113,7 @@ export default function Home() {
         })}
       </div>
 
-      <div className="bg-gradient-to-r from-[#085ba7] via-[#108bd1] to-[#ff901c] rounded-2xl p-8 text-white shadow-xl">
+      <div className="bg-[#085ba7] rounded-2xl p-8 text-white shadow-xl">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
             <h2 className="text-2xl font-bold">Fluxo de Trabalho Integrado</h2>

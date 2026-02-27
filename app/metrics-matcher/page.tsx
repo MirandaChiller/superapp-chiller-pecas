@@ -496,7 +496,7 @@ export default function TasksPage() {
             setColumnForm({ nome: "", cor: "#085ba7" });
             setShowColumnModal(true);
           }}
-          className="px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center space-x-2"
+          className="px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold flex items-center space-x-2"
         >
           <Plus className="w-5 h-5" />
           <span>Nova Coluna</span>

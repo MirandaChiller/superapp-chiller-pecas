@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Calendar, Plus, Save, Trash2, Filter } from "lucide-react";
+import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink } from "lucide-react";
 
 const OBJETIVOS = [
   "Alcance & Visibilidade",
@@ -16,41 +16,27 @@ const FORMATOS = ["Reels", "Carrossel", "Estático"];
 
 const SUBFORMATOS: Record<string, string[]> = {
   Reels: [
-    "Tutorial Rápido",
-    "Bastidores",
-    "Antes e Depois",
-    "Trending Audio",
-    "Depoimento Cliente",
-    "Dica Expressa",
-    "Demonstração Produto",
-    "FAQ",
-    "Storytelling",
+    "Tutorial Rápido", "Bastidores", "Antes e Depois", "Trending Audio",
+    "Depoimento Cliente", "Dica Expressa", "Demonstração Produto", "FAQ", "Storytelling",
   ],
   Carrossel: [
-    "Guia Completo",
-    "Checklist",
-    "Infográfico",
-    "Comparativo",
-    "Timeline",
-    "Estatísticas",
-    "Mitos vs Verdades",
-    "Top 5/10",
-    "Case de Sucesso",
+    "Guia Completo", "Checklist", "Infográfico", "Comparativo",
+    "Timeline", "Estatísticas", "Mitos vs Verdades", "Top 5/10", "Case de Sucesso",
   ],
   Estático: [
-    "Frase Motivacional",
-    "Anúncio",
-    "Promoção",
-    "Produto em Destaque",
-    "Novidade",
-    "Comunicado",
-    "Dica Visual",
-    "Curiosidade",
-    "Conquista/Milestone",
+    "Frase Motivacional", "Anúncio", "Promoção", "Produto em Destaque",
+    "Novidade", "Comunicado", "Dica Visual", "Curiosidade", "Conquista/Milestone",
   ],
 };
 
 const STATUS_OPTIONS = ["Planejado", "Em Produção", "Aprovado", "Publicado"];
+
+const STATUS_STYLE: Record<string, { bar: string; badge: string; text: string }> = {
+  Publicado:     { bar: "bg-green-500",  badge: "bg-green-100",  text: "text-green-700" },
+  Aprovado:      { bar: "bg-[#085ba7]",  badge: "bg-blue-100",   text: "text-[#085ba7]" },
+  "Em Produção": { bar: "bg-amber-400",  badge: "bg-amber-100",  text: "text-amber-700" },
+  Planejado:     { bar: "bg-slate-300",  badge: "bg-slate-100",  text: "text-slate-600" },
+};
 
 interface Post {
   id: string;
@@ -73,7 +59,14 @@ export default function FeedPage() {
   const [showForm, setShowForm] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState("Todos");
   const [editingId, setEditingId] = useState<string | null>(null);
-  
+
+  // 3D flip state — set of post IDs currently showing their back face
+  const [flippedCards, setFlippedCards] = useState<Set<string>>(new Set());
+
+  // Date filters
+  const [filterDateFrom, setFilterDateFrom] = useState("");
+  const [filterDateTo, setFilterDateTo] = useState("");
+
   const [formData, setFormData] = useState({
     data_publicacao: "",
     tema: "",
@@ -87,19 +80,16 @@ export default function FeedPage() {
     link_publicado: "",
   });
 
-  useEffect(() => {
-    loadData();
-  }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
-    // Carregar temas do Content Pie
     const { data: contentPieData } = await supabase
       .from("content_pie")
       .select("temas")
       .order("created_at", { ascending: false })
       .limit(1)
       .single();
-    
+
     if (contentPieData?.temas) {
       const temasNomes = contentPieData.temas.map((t: any) => t.nome).filter(Boolean);
       setTemas(temasNomes.length > 0 ? temasNomes : ["Geral"]);
@@ -107,52 +97,29 @@ export default function FeedPage() {
       setTemas(["Geral"]);
     }
 
-    // Carregar posts
     const { data: postsData } = await supabase
       .from("posts_planejados")
       .select("*")
       .order("data_publicacao", { ascending: false });
-    
-    if (postsData) {
-      setPosts(postsData);
-    }
-    
+
+    if (postsData) setPosts(postsData);
     setLoading(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    
+
     if (editingId) {
-      // Atualizar post existente
       const { error } = await supabase
         .from("posts_planejados")
-        .update({
-          ...formData,
-          link_publicado: formData.link_publicado || null,
-        })
+        .update({ ...formData, link_publicado: formData.link_publicado || null })
         .eq("id", editingId);
-
-      if (!error) {
-        await loadData();
-        setShowForm(false);
-        setEditingId(null);
-        resetForm();
-      }
+      if (!error) { await loadData(); setShowForm(false); setEditingId(null); resetForm(); }
     } else {
-      // Criar novo post
       const { error } = await supabase
         .from("posts_planejados")
-        .insert({
-          ...formData,
-          link_publicado: formData.link_publicado || null,
-        });
-
-      if (!error) {
-        await loadData();
-        setShowForm(false);
-        resetForm();
-      }
+        .insert({ ...formData, link_publicado: formData.link_publicado || null });
+      if (!error) { await loadData(); setShowForm(false); resetForm(); }
     }
   }
 
@@ -164,6 +131,8 @@ export default function FeedPage() {
   }
 
   function editPost(post: Post) {
+    // Unflip before opening form
+    setFlippedCards((prev) => { const n = new Set(prev); n.delete(post.id); return n; });
     setFormData({
       data_publicacao: post.data_publicacao,
       tema: post.tema,
@@ -195,9 +164,21 @@ export default function FeedPage() {
     });
   }
 
-  const postsFiltrados = filtroStatus === "Todos" 
-    ? posts 
-    : posts.filter(p => p.status === filtroStatus);
+  function toggleFlip(id: string) {
+    setFlippedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  const postsFiltrados = posts.filter((p) => {
+    if (filtroStatus !== "Todos" && p.status !== filtroStatus) return false;
+    if (filterDateFrom && p.data_publicacao < filterDateFrom) return false;
+    if (filterDateTo && p.data_publicacao > filterDateTo) return false;
+    return true;
+  });
 
   if (loading) {
     return (
@@ -209,35 +190,33 @@ export default function FeedPage() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-slate-900">Planejamento de Feed</h1>
           <p className="text-slate-600 mt-1">Organize seu calendário editorial</p>
         </div>
         <button
-          onClick={() => {
-            setEditingId(null);
-            resetForm();
-            setShowForm(true);
-          }}
-          className="flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all"
+          onClick={() => { setEditingId(null); resetForm(); setShowForm(true); }}
+          className="flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:bg-[#e08016] hover:shadow-lg transition-all font-semibold"
         >
           <Plus className="w-5 h-5" />
           <span>Novo Post</span>
         </button>
       </div>
 
-      <div className="flex items-center space-x-4">
-        <Filter className="w-5 h-5 text-slate-600" />
-        <div className="flex space-x-2">
+      {/* Status filter */}
+      <div className="flex items-center space-x-3">
+        <Filter className="w-4 h-4 text-slate-500" />
+        <div className="flex flex-wrap gap-2">
           {["Todos", ...STATUS_OPTIONS].map((status) => (
             <button
               key={status}
               onClick={() => setFiltroStatus(status)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
                 filtroStatus === status
-                  ? "bg-[#ff901c] text-white"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  ? "bg-[#085ba7] text-white shadow-md"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
               }`}
             >
               {status}
@@ -246,17 +225,51 @@ export default function FeedPage() {
         </div>
       </div>
 
+      {/* Date filter */}
+      <div className="bg-white rounded-xl border border-slate-200 px-5 py-3 flex items-center gap-4 flex-wrap shadow-sm">
+        <span className="text-sm font-semibold text-slate-600">Data de publicação:</span>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400">De</label>
+          <input
+            type="date"
+            value={filterDateFrom}
+            onChange={(e) => setFilterDateFrom(e.target.value)}
+            className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <label className="text-xs text-slate-400">Até</label>
+          <input
+            type="date"
+            value={filterDateTo}
+            onChange={(e) => setFilterDateTo(e.target.value)}
+            className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
+          />
+        </div>
+        {(filterDateFrom || filterDateTo) && (
+          <button
+            onClick={() => { setFilterDateFrom(""); setFilterDateTo(""); }}
+            className="px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors"
+          >
+            Limpar datas
+          </button>
+        )}
+        <span className="ml-auto text-xs text-slate-400">
+          {postsFiltrados.length} post{postsFiltrados.length !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* ─── New / Edit Form Modal ─── */}
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full my-8">
+          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full my-8 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">{editingId ? "Editar Post" : "Novo Post"}</h2>
+              <h2 className="text-2xl font-bold text-slate-900">
+                {editingId ? "Editar Post" : "Novo Post"}
+              </h2>
               <button
-                onClick={() => {
-                  setShowForm(false);
-                  setEditingId(null);
-                }}
-                className="text-slate-400 hover:text-slate-600"
+                onClick={() => { setShowForm(false); setEditingId(null); }}
+                className="text-slate-400 hover:text-slate-600 text-xl"
               >
                 ✕
               </button>
@@ -265,171 +278,99 @@ export default function FeedPage() {
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Data de Publicação
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.data_publicacao}
-                    onChange={(e) => setFormData({...formData, data_publicacao: e.target.value})}
-                    required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  />
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Data de Publicação</label>
+                  <input type="date" value={formData.data_publicacao}
+                    onChange={(e) => setFormData({ ...formData, data_publicacao: e.target.value })}
+                    required className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]" />
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Tema
-                  </label>
-                  <select
-                    value={formData.tema}
-                    onChange={(e) => setFormData({...formData, tema: e.target.value})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  >
-                    {temas.map((tema) => (
-                      <option key={tema} value={tema}>{tema}</option>
-                    ))}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Tema</label>
+                  <select value={formData.tema}
+                    onChange={(e) => setFormData({ ...formData, tema: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]">
+                    {temas.map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Objetivo
-                  </label>
-                  <select
-                    value={formData.objetivo}
-                    onChange={(e) => setFormData({...formData, objetivo: e.target.value})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  >
-                    {OBJETIVOS.map((obj) => (
-                      <option key={obj} value={obj}>{obj}</option>
-                    ))}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Objetivo</label>
+                  <select value={formData.objetivo}
+                    onChange={(e) => setFormData({ ...formData, objetivo: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]">
+                    {OBJETIVOS.map((o) => <option key={o} value={o}>{o}</option>)}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Formato
-                  </label>
-                  <select
-                    value={formData.formato}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Formato</label>
+                  <select value={formData.formato}
                     onChange={(e) => {
-                      const novoFormato = e.target.value;
-                      setFormData({
-                        ...formData, 
-                        formato: novoFormato,
-                        sub_formato: SUBFORMATOS[novoFormato][0]
-                      });
+                      const f = e.target.value;
+                      setFormData({ ...formData, formato: f, sub_formato: SUBFORMATOS[f][0] });
                     }}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  >
-                    {FORMATOS.map((fmt) => (
-                      <option key={fmt} value={fmt}>{fmt}</option>
-                    ))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]">
+                    {FORMATOS.map((f) => <option key={f} value={f}>{f}</option>)}
                   </select>
                 </div>
-
                 <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Sub-formato
-                  </label>
-                  <select
-                    value={formData.sub_formato}
-                    onChange={(e) => setFormData({...formData, sub_formato: e.target.value})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  >
-                    {SUBFORMATOS[formData.formato].map((sub) => (
-                      <option key={sub} value={sub}>{sub}</option>
-                    ))}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Sub-formato</label>
+                  <select value={formData.sub_formato}
+                    onChange={(e) => setFormData({ ...formData, sub_formato: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]">
+                    {SUBFORMATOS[formData.formato].map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Gancho (Abertura)
-                </label>
-                <input
-                  type="text"
-                  value={formData.gancho}
-                  onChange={(e) => setFormData({...formData, gancho: e.target.value})}
+                <label className="block text-sm font-medium text-slate-700 mb-1">Gancho (Abertura)</label>
+                <input type="text" value={formData.gancho}
+                  onChange={(e) => setFormData({ ...formData, gancho: e.target.value })}
                   placeholder="Ex: Você sabia que..."
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                />
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Conteúdo Principal
-                </label>
-                <textarea
-                  value={formData.conteudo}
-                  onChange={(e) => setFormData({...formData, conteudo: e.target.value})}
-                  rows={4}
-                  required
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                <label className="block text-sm font-medium text-slate-700 mb-1">Conteúdo Principal</label>
+                <textarea value={formData.conteudo}
+                  onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
+                  rows={4} required
                   placeholder="Mensagem central do post"
-                />
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  CTA (Call to Action)
-                </label>
-                <input
-                  type="text"
-                  value={formData.cta}
-                  onChange={(e) => setFormData({...formData, cta: e.target.value})}
+                <label className="block text-sm font-medium text-slate-700 mb-1">CTA (Call to Action)</label>
+                <input type="text" value={formData.cta}
+                  onChange={(e) => setFormData({ ...formData, cta: e.target.value })}
                   placeholder="Ex: Comente abaixo, Salve este post"
-                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                />
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]" />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Status do Post
-                  </label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({...formData, status: e.target.value})}
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  >
-                    {STATUS_OPTIONS.map((status) => (
-                      <option key={status} value={status}>{status}</option>
-                    ))}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                  <select value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]">
+                    {STATUS_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Link Publicado (Opcional)
-                  </label>
-                  <input
-                    type="url"
-                    value={formData.link_publicado}
-                    onChange={(e) => setFormData({...formData, link_publicado: e.target.value})}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Link Publicado (Opcional)</label>
+                  <input type="url" value={formData.link_publicado}
+                    onChange={(e) => setFormData({ ...formData, link_publicado: e.target.value })}
                     placeholder="https://instagram.com/p/..."
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  />
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]" />
                 </div>
               </div>
 
               <div className="flex space-x-4 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    setEditingId(null);
-                  }}
-                  className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50"
-                >
+                <button type="button"
+                  onClick={() => { setShowForm(false); setEditingId(null); }}
+                  className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg"
-                >
+                <button type="submit"
+                  className="flex-1 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:bg-[#e08016] font-semibold">
                   {editingId ? "Atualizar Post" : "Criar Post"}
                 </button>
               </div>
@@ -438,67 +379,156 @@ export default function FeedPage() {
         </div>
       )}
 
+      {/* ─── 3D Flip Card Grid ─── */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {postsFiltrados.map((post) => (
-          <div key={post.id} className="bg-white rounded-xl shadow-md border border-slate-200 p-6 space-y-4">
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="text-sm text-slate-500">
-                  {new Date(post.data_publicacao).toLocaleDateString('pt-BR')}
+        {postsFiltrados.map((post) => {
+          const isFlipped = flippedCards.has(post.id);
+          const st = STATUS_STYLE[post.status] || STATUS_STYLE.Planejado;
+          const dataFormatada = (() => {
+            const [y, m, d] = post.data_publicacao.split("-");
+            return new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
+              .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+          })();
+
+          return (
+            <div
+              key={post.id}
+              onClick={() => toggleFlip(post.id)}
+              className="cursor-pointer select-none"
+              style={{ perspective: "1200px", minHeight: "320px" }}
+            >
+              {/* Flip wrapper */}
+              <div
+                style={{
+                  position: "relative",
+                  transformStyle: "preserve-3d",
+                  transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
+                  transition: "transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)",
+                  height: "320px",
+                }}
+              >
+                {/* ── FRONT FACE ── */}
+                <div
+                  className="absolute inset-0 bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden flex flex-col"
+                  style={{ backfaceVisibility: "hidden" }}
+                >
+                  {/* Colored top bar */}
+                  <div className={`h-1.5 w-full ${st.bar}`} />
+
+                  <div className="flex flex-col flex-1 p-5 gap-3">
+                    {/* Date + Status */}
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-slate-400 font-medium">{dataFormatada}</span>
+                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${st.badge} ${st.text}`}>
+                        {post.status}
+                      </span>
+                    </div>
+
+                    {/* Tema */}
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">{post.tema}</h3>
+
+                    {/* Format pills */}
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className="px-2.5 py-0.5 bg-[#085ba7] text-white text-xs rounded-full font-medium">
+                        {post.formato}
+                      </span>
+                      <span className="px-2.5 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-full">
+                        {post.sub_formato}
+                      </span>
+                    </div>
+
+                    {/* Gancho */}
+                    {post.gancho && (
+                      <p className="text-sm text-slate-600 italic line-clamp-2 flex-1">
+                        &ldquo;{post.gancho}&rdquo;
+                      </p>
+                    )}
+
+                    {/* Flip hint */}
+                    <div className="mt-auto flex items-center justify-center gap-1.5 text-xs text-slate-300 pt-2 border-t border-slate-100">
+                      <RefreshCw className="w-3 h-3" />
+                      Clique para ver detalhes
+                    </div>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 mt-1">{post.tema}</h3>
-              </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => editPost(post)}
-                  className="p-2 text-[#ff901c] hover:bg-orange-50 rounded-lg transition-colors"
-                  title="Editar post"
+
+                {/* ── BACK FACE ── */}
+                <div
+                  className="absolute inset-0 bg-[#085ba7] rounded-2xl shadow-md overflow-hidden flex flex-col"
+                  style={{
+                    backfaceVisibility: "hidden",
+                    transform: "rotateY(180deg)",
+                  }}
                 >
-                  ✏️
-                </button>
-                <button
-                  onClick={() => deletePost(post.id)}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  title="Excluir post"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  <div className="flex flex-col flex-1 p-5 gap-3 overflow-hidden">
+                    {/* Header row */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 mr-2">
+                        <h3 className="font-bold text-white text-base leading-tight truncate">{post.tema}</h3>
+                        <p className="text-blue-200 text-xs mt-0.5 truncate">{post.objetivo}</p>
+                      </div>
+                      {/* Action buttons — stopPropagation so they don't flip back */}
+                      <div className="flex gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          onClick={() => editPost(post)}
+                          className="p-1.5 bg-white/15 hover:bg-white/25 rounded-lg transition-colors"
+                          title="Editar"
+                        >
+                          <span className="text-sm">✏️</span>
+                        </button>
+                        <button
+                          onClick={() => deletePost(post.id)}
+                          className="p-1.5 bg-red-400/30 hover:bg-red-400/50 rounded-lg transition-colors"
+                          title="Excluir"
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-white" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Conteúdo */}
+                    <div className="flex-1 overflow-hidden">
+                      <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-1">Conteúdo</p>
+                      <p className="text-sm text-white/90 line-clamp-4 leading-relaxed">{post.conteudo}</p>
+                    </div>
+
+                    {/* CTA */}
+                    {post.cta && (
+                      <div className="bg-[#ff901c] rounded-xl px-3 py-2 flex-shrink-0">
+                        <p className="text-xs font-semibold text-orange-100 uppercase tracking-wide">CTA</p>
+                        <p className="text-sm text-white font-medium line-clamp-1">{post.cta}</p>
+                      </div>
+                    )}
+
+                    {/* Link publicado */}
+                    {post.link_publicado && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <a
+                          href={post.link_publicado}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-xs text-blue-200 hover:text-white underline transition-colors"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          Ver publicação
+                        </a>
+                      </div>
+                    )}
+
+                    {/* Back hint */}
+                    <div className="flex items-center justify-center gap-1.5 text-xs text-blue-300 pt-1 border-t border-white/10">
+                      <RefreshCw className="w-3 h-3" />
+                      Clique para voltar
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-medium text-slate-600">Objetivo:</span>
-                <span className="text-xs text-slate-900">{post.objetivo}</span>
-              </div>
-              <div className="flex items-center space-x-2">
-                <span className="text-xs font-medium text-slate-600">Formato:</span>
-                <span className="text-xs text-slate-900">{post.formato} - {post.sub_formato}</span>
-              </div>
-            </div>
-
-            {post.gancho && (
-              <p className="text-sm text-slate-700 font-medium">"{post.gancho}"</p>
-            )}
-
-            <p className="text-sm text-slate-600 line-clamp-3">{post.conteudo}</p>
-
-            {post.cta && (
-              <p className="text-sm text-[#ff901c] font-medium">CTA: {post.cta}</p>
-            )}
-
-            <div className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-              post.status === "Publicado" ? "bg-green-100 text-green-700" :
-              post.status === "Aprovado" ? "bg-blue-100 text-blue-700" :
-              post.status === "Em Produção" ? "bg-yellow-100 text-yellow-700" :
-              "bg-slate-100 text-slate-700"
-            }`}>
-              {post.status}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
+      {/* Empty state */}
       {postsFiltrados.length === 0 && (
         <div className="text-center py-16">
           <Calendar className="w-24 h-24 text-slate-300 mx-auto mb-4" />
@@ -507,12 +537,8 @@ export default function FeedPage() {
           </h3>
           <p className="text-slate-500 mb-6">Crie seu primeiro post para começar</p>
           <button
-            onClick={() => {
-              setEditingId(null);
-              resetForm();
-              setShowForm(true);
-            }}
-            className="inline-flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg"
+            onClick={() => { setEditingId(null); resetForm(); setShowForm(true); }}
+            className="inline-flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:bg-[#e08016] hover:shadow-lg font-semibold"
           >
             <Plus className="w-5 h-5" />
             <span>Criar Post</span>

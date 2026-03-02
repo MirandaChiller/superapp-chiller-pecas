@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn, CheckCircle, AlertCircle } from "lucide-react";
+import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn, CheckCircle, AlertCircle, Copy, Check } from "lucide-react";
 
 interface CampaignEdit {
   id?: string;
@@ -44,10 +44,13 @@ export default function CampaignEditsPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [filterTipo, setFilterTipo] = useState<string>("Todos");
+  const [filterDataDe, setFilterDataDe] = useState<string>("");
+  const [filterDataAte, setFilterDataAte] = useState<string>("");
   const [showPendentes, setShowPendentes] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState<CampaignEdit>({
     nome_campanha: "",
@@ -67,21 +70,55 @@ export default function CampaignEditsPage() {
 
   useEffect(() => {
     let filtered = edits;
-    
+
     if (filterTipo !== "Todos") {
       filtered = filtered.filter(edit => edit.tipo_campanha === filterTipo);
     }
-    
+
     if (showPendentes) {
-      filtered = filtered.filter(edit => 
-        edit.data_revisao && 
+      filtered = filtered.filter(edit =>
+        edit.data_revisao &&
         !edit.data_revisao_concluida &&
         new Date(edit.data_revisao) <= new Date()
       );
     }
-    
+
+    if (filterDataDe) {
+      filtered = filtered.filter(edit => edit.data_alteracao >= filterDataDe);
+    }
+
+    if (filterDataAte) {
+      filtered = filtered.filter(edit => edit.data_alteracao <= filterDataAte);
+    }
+
     setFilteredEdits(filtered);
-  }, [filterTipo, edits, showPendentes]);
+  }, [filterTipo, edits, showPendentes, filterDataDe, filterDataAte]);
+
+  // Open edit form from URL param (deep link: /campaign-edits?edit=<id>)
+  useEffect(() => {
+    if (edits.length > 0 && !showForm) {
+      const editId = new URLSearchParams(window.location.search).get("edit");
+      if (editId) {
+        const found = edits.find(e => e.id === editId);
+        if (found) {
+          setFormData({
+            nome_campanha: found.nome_campanha,
+            tipo_campanha: found.tipo_campanha,
+            nivel_edicao: found.nivel_edicao,
+            data_alteracao: found.data_alteracao,
+            descricao_alteracao: found.descricao_alteracao,
+            imagens_alteracao: found.imagens_alteracao || [],
+            motivo: found.motivo,
+            data_revisao: found.data_revisao || "",
+            observacoes_revisao: found.observacoes_revisao || ""
+          });
+          setEditingId(found.id || null);
+          setShowForm(true);
+        }
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edits]);
 
   async function loadEdits() {
     setLoading(true);
@@ -120,8 +157,7 @@ export default function CampaignEditsPage() {
 
         if (!error) {
           await loadEdits();
-          setShowForm(false);
-          resetForm();
+          closeForm();
         }
       } else {
         const { error } = await supabase
@@ -140,8 +176,7 @@ export default function CampaignEditsPage() {
 
         if (!error) {
           await loadEdits();
-          setShowForm(false);
-          resetForm();
+          closeForm();
         }
       }
     } catch (error) {
@@ -180,6 +215,15 @@ export default function CampaignEditsPage() {
     });
     setEditingId(edit.id || null);
     setShowForm(true);
+    if (edit.id) {
+      window.history.pushState({}, "", `/campaign-edits?edit=${edit.id}`);
+    }
+  }
+
+  function closeForm() {
+    setShowForm(false);
+    resetForm();
+    window.history.pushState({}, "", "/campaign-edits");
   }
 
   async function marcarComoRevisado(id: string) {
@@ -249,6 +293,27 @@ export default function CampaignEditsPage() {
     });
   }
 
+  function copiarConteudo(edit: CampaignEdit) {
+    const formatarData = (data: string) =>
+      data ? new Date(data).toLocaleDateString('pt-BR') : "";
+
+    const texto = [
+      `Nome da campanha: ${edit.nome_campanha}`,
+      `Tipo de Campanha: ${edit.tipo_campanha}`,
+      `Nível de edição: ${edit.nivel_edicao}`,
+      `Data da Alteração: ${formatarData(edit.data_alteracao)}`,
+      `Descrição da alteração: ${edit.descricao_alteracao}`,
+      `Motivo da Alteração: ${edit.motivo}`,
+      `Data da revisão: ${edit.data_revisao ? formatarData(edit.data_revisao) : "(Caso não tenha, deixar vazio)"}`,
+      `Observação da Revisão: ${edit.observacoes_revisao || "(Caso não tenha, deixar vazio)"}`,
+    ].join("\n\n");
+
+    navigator.clipboard.writeText(texto).then(() => {
+      setCopiedId(edit.id || null);
+      setTimeout(() => setCopiedId(null), 2000);
+    });
+  }
+
   function isPendente(edit: CampaignEdit) {
     return edit.data_revisao && 
            !edit.data_revisao_concluida && 
@@ -273,7 +338,7 @@ export default function CampaignEditsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#085ba7] to-[#108bd1] rounded-xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-[#085ba7] rounded-xl flex items-center justify-center">
             <Target className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -286,7 +351,7 @@ export default function CampaignEditsPage() {
             resetForm();
             setShowForm(true);
           }}
-          className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+          className="flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
         >
           <Plus className="w-5 h-5" />
           <span>Nova Edição</span>
@@ -326,7 +391,7 @@ export default function CampaignEditsPage() {
                 onClick={() => setShowPendentes(false)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                   !showPendentes
-                    ? "bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white shadow-md"
+                    ? "bg-[#085ba7] text-white shadow-md"
                     : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                 }`}
               >
@@ -357,7 +422,7 @@ export default function CampaignEditsPage() {
                   onClick={() => setFilterTipo(tipo)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     filterTipo === tipo
-                      ? "bg-gradient-to-r from-[#085ba7] to-[#108bd1] text-white shadow-md"
+                      ? "bg-[#085ba7] text-white shadow-md"
                       : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                   }`}
                 >
@@ -370,6 +435,37 @@ export default function CampaignEditsPage() {
             {filteredEdits.length} edição{filteredEdits.length !== 1 ? 'ões' : ''}
           </div>
         </div>
+
+        {/* Filtro de data */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-semibold text-slate-700">Data da alteração:</span>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500">De</label>
+            <input
+              type="date"
+              value={filterDataDe}
+              onChange={e => setFilterDataDe(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-slate-500">Até</label>
+            <input
+              type="date"
+              value={filterDataAte}
+              onChange={e => setFilterDataAte(e.target.value)}
+              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
+            />
+          </div>
+          {(filterDataDe || filterDataAte) && (
+            <button
+              onClick={() => { setFilterDataDe(""); setFilterDataAte(""); }}
+              className="px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              Limpar datas
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Modal de Formulário */}
@@ -381,10 +477,7 @@ export default function CampaignEditsPage() {
                 {editingId ? "Editar Registro" : "Registrar Nova Edição"}
               </h2>
               <button
-                onClick={() => {
-                  setShowForm(false);
-                  resetForm();
-                }}
+                onClick={closeForm}
                 disabled={saving}
                 className="text-slate-400 hover:text-slate-600 disabled:opacity-50"
               >
@@ -401,7 +494,7 @@ export default function CampaignEditsPage() {
                   type="text"
                   value={formData.nome_campanha}
                   onChange={(e) => setFormData({ ...formData, nome_campanha: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent font-medium"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent font-medium"
                   placeholder="Ex: Black Friday 2024 - Peças HVAC"
                   required
                 />
@@ -418,7 +511,7 @@ export default function CampaignEditsPage() {
                     tipo_campanha: e.target.value,
                     nivel_edicao: ""
                   })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent font-medium"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent font-medium"
                   required
                 >
                   <option value="Pesquisa">Pesquisa</option>
@@ -433,7 +526,7 @@ export default function CampaignEditsPage() {
                 <select
                   value={formData.nivel_edicao}
                   onChange={(e) => setFormData({ ...formData, nivel_edicao: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent font-medium"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent font-medium"
                   required
                 >
                   <option value="">Selecione o nível...</option>
@@ -451,7 +544,7 @@ export default function CampaignEditsPage() {
                   type="date"
                   value={formData.data_alteracao}
                   onChange={(e) => setFormData({ ...formData, data_alteracao: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                   required
                 />
               </div>
@@ -466,7 +559,7 @@ export default function CampaignEditsPage() {
                     onChange={(e) => setFormData({ ...formData, descricao_alteracao: e.target.value })}
                     onPaste={handleImagePaste}
                     rows={4}
-                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                    className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                     placeholder="Descreva a alteração realizada... (Ctrl+V para colar imagens)"
                     required
                   />
@@ -506,7 +599,7 @@ export default function CampaignEditsPage() {
                   value={formData.motivo}
                   onChange={(e) => setFormData({ ...formData, motivo: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                   placeholder="Por que esta alteração foi necessária?"
                   required
                 />
@@ -520,7 +613,7 @@ export default function CampaignEditsPage() {
                   type="date"
                   value={formData.data_revisao}
                   onChange={(e) => setFormData({ ...formData, data_revisao: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                 />
               </div>
 
@@ -532,7 +625,7 @@ export default function CampaignEditsPage() {
                   value={formData.observacoes_revisao}
                   onChange={(e) => setFormData({ ...formData, observacoes_revisao: e.target.value })}
                   rows={3}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#108bd1] focus:border-transparent"
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
                   placeholder="Resultados observados após a alteração..."
                 />
               </div>
@@ -540,10 +633,7 @@ export default function CampaignEditsPage() {
               <div className="flex space-x-4 pt-4">
                 <button
                   type="button"
-                  onClick={() => {
-                    setShowForm(false);
-                    resetForm();
-                  }}
+                  onClick={closeForm}
                   disabled={saving}
                   className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-colors font-medium disabled:opacity-50"
                 >
@@ -596,7 +686,7 @@ export default function CampaignEditsPage() {
       {/* Lista de Edições */}
       {loading ? (
         <div className="flex items-center justify-center py-12">
-          <div className="w-12 h-12 border-4 border-[#108bd1] border-t-transparent rounded-full animate-spin" />
+          <div className="w-12 h-12 border-4 border-[#085ba7] border-t-transparent rounded-full animate-spin" />
         </div>
       ) : filteredEdits.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-2xl border-2 border-dashed border-slate-300">
@@ -615,7 +705,7 @@ export default function CampaignEditsPage() {
                 resetForm();
                 setShowForm(true);
               }}
-              className="inline-flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#ff901c] to-[#085ba7] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+              className="inline-flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
             >
               <Plus className="w-5 h-5" />
               <span>Nova Edição</span>
@@ -642,7 +732,7 @@ export default function CampaignEditsPage() {
                       <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         pendente 
                           ? 'bg-gradient-to-br from-red-500 to-red-600 animate-pulse' 
-                          : 'bg-gradient-to-br from-[#108bd1] to-[#085ba7]'
+                          : 'bg-[#085ba7]'
                       }`}>
                         {pendente ? (
                           <AlertCircle className="w-5 h-5 text-white" />
@@ -657,6 +747,9 @@ export default function CampaignEditsPage() {
                         <div className="flex items-center space-x-2 mt-1 flex-wrap gap-1">
                           <span className="px-2 py-1 bg-[#085ba7] text-white text-xs font-bold rounded">
                             {edit.tipo_campanha}
+                          </span>
+                          <span className="px-2 py-1 bg-slate-600 text-white text-xs font-medium rounded">
+                            {edit.nivel_edicao}
                           </span>
                           <span className="text-xs text-slate-500">
                             {new Date(edit.data_alteracao).toLocaleDateString('pt-BR')}
@@ -685,6 +778,21 @@ export default function CampaignEditsPage() {
                           <CheckCircle className="w-5 h-5" />
                         </button>
                       )}
+                      <button
+                        onClick={() => copiarConteudo(edit)}
+                        className={`p-2 rounded-lg transition-colors ${
+                          copiedId === edit.id
+                            ? "text-green-600 bg-green-50"
+                            : "text-slate-500 hover:bg-slate-50"
+                        }`}
+                        title="Copiar conteúdo"
+                      >
+                        {copiedId === edit.id ? (
+                          <Check className="w-5 h-5" />
+                        ) : (
+                          <Copy className="w-5 h-5" />
+                        )}
+                      </button>
                       <button
                         onClick={() => handleEdit(edit)}
                         className="p-2 text-[#085ba7] hover:bg-blue-50 rounded-lg transition-colors"

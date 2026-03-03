@@ -1,9 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(request: NextRequest) {
-  const url = request.nextUrl.searchParams.get("url");
-  if (!url) return NextResponse.json({ imageUrl: null });
+/** Extract a URL from a raw Instagram embed code (blockquote) if the user pasted it */
+function extractInstagramUrlFromEmbed(input: string): string | null {
+  const match = input.match(/data-instgrm-permalink=["']([^"'?]+)/i);
+  return match?.[1] ?? null;
+}
 
+/** Returns true if the URL is an Instagram post/reel */
+function isInstagramUrl(url: string): boolean {
+  return /instagram\.com\/(p|reel|tv)\//i.test(url);
+}
+
+async function tryInstagramOEmbed(postUrl: string): Promise<string | null> {
+  // Instagram's public oEmbed endpoint — returns thumbnail_url for public posts
+  const oembedUrl = `https://api.instagram.com/oembed/?url=${encodeURIComponent(postUrl)}&omitscript=true`;
+  try {
+    const res = await fetch(oembedUrl, { signal: AbortSignal.timeout(5000) });
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.thumbnail_url ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function tryOgImage(url: string): Promise<string | null> {
   try {
     const res = await fetch(url, {
       headers: {
@@ -17,26 +38,41 @@ export async function GET(request: NextRequest) {
 
     const html = await res.text();
 
-    // og:image (two attribute orders)
     const ogMatch =
       html.match(/<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i) ||
       html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i);
+    if (ogMatch?.[1]) return ogMatch[1];
 
-    if (ogMatch?.[1]) {
-      return NextResponse.json({ imageUrl: ogMatch[1] });
-    }
-
-    // fallback: twitter:image
     const twitterMatch =
       html.match(/<meta[^>]*name=["']twitter:image["'][^>]*content=["']([^"']+)["']/i) ||
       html.match(/<meta[^>]*content=["']([^"']+)["'][^>]*name=["']twitter:image["']/i);
+    if (twitterMatch?.[1]) return twitterMatch[1];
 
-    if (twitterMatch?.[1]) {
-      return NextResponse.json({ imageUrl: twitterMatch[1] });
-    }
-
-    return NextResponse.json({ imageUrl: null });
+    return null;
   } catch {
-    return NextResponse.json({ imageUrl: null });
+    return null;
   }
+}
+
+export async function GET(request: NextRequest) {
+  let input = request.nextUrl.searchParams.get("url");
+  if (!input) return NextResponse.json({ imageUrl: null });
+
+  // If user pasted a full embed code, extract the post URL from it
+  const embedExtracted = extractInstagramUrlFromEmbed(input);
+  const url = embedExtracted ?? input;
+
+  let imageUrl: string | null = null;
+
+  if (isInstagramUrl(url)) {
+    // Try Instagram's oEmbed endpoint first (returns thumbnail_url for public posts)
+    imageUrl = await tryInstagramOEmbed(url);
+  }
+
+  // Fallback: og:image / twitter:image scraping (works for YouTube, TikTok, LinkedIn, etc.)
+  if (!imageUrl) {
+    imageUrl = await tryOgImage(url);
+  }
+
+  return NextResponse.json({ imageUrl });
 }

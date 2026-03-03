@@ -125,6 +125,12 @@ const SUBFORMATOS: Record<string, string[]> = {
 
 const STATUS_OPTIONS = ["Planejado", "Em Produção", "Aprovado", "Publicado"];
 
+const MESES = [
+  "Janeiro", "Fevereiro", "Março", "Abril",
+  "Maio", "Junho", "Julho", "Agosto",
+  "Setembro", "Outubro", "Novembro", "Dezembro",
+];
+
 const STATUS_STYLE: Record<string, { bar: string; badge: string; text: string }> = {
   Publicado:     { bar: "bg-green-500",  badge: "bg-green-100",  text: "text-green-700" },
   Aprovado:      { bar: "bg-[#085ba7]",  badge: "bg-blue-100",   text: "text-[#085ba7]" },
@@ -149,7 +155,12 @@ interface Post {
 export default function FeedPage() {
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<Post[]>([]);
-  const [temas, setTemas] = useState<string[]>([]);
+  // Temas keyed by "ano-mes", sourced from content_pie_mensal
+  const [temasData, setTemasData] = useState<Record<string, string[]>>({});
+  const [anosDisponiveis, setAnosDisponiveis] = useState<number[]>([new Date().getFullYear()]);
+  // Month/year selector for the form (drives tema filtering)
+  const [formMes, setFormMes] = useState<number>(new Date().getMonth() + 1);
+  const [formAno, setFormAno] = useState<number>(new Date().getFullYear());
   const [showForm, setShowForm] = useState(false);
   const [filtroStatus, setFiltroStatus] = useState("Todos");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -196,18 +207,20 @@ export default function FeedPage() {
   }, [posts]);
 
   async function loadData() {
-    const { data: contentPieData } = await supabase
-      .from("content_pie")
-      .select("temas")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single();
+    const { data: temasMensais } = await supabase
+      .from("content_pie_mensal")
+      .select("ano, mes, temas");
 
-    if (contentPieData?.temas) {
-      const temasNomes = contentPieData.temas.map((t: any) => t.nome).filter(Boolean);
-      setTemas(temasNomes.length > 0 ? temasNomes : ["Geral"]);
-    } else {
-      setTemas(["Geral"]);
+    if (temasMensais) {
+      const td: Record<string, string[]> = {};
+      const anosSet = new Set<number>([new Date().getFullYear()]);
+      temasMensais.forEach((row) => {
+        anosSet.add(row.ano);
+        const nomes = ((row.temas ?? []) as { nome: string }[]).map((t) => t.nome).filter(Boolean);
+        td[`${row.ano}-${row.mes}`] = nomes;
+      });
+      setTemasData(td);
+      setAnosDisponiveis(Array.from(anosSet).sort((a, b) => a - b));
     }
 
     const { data: postsData } = await supabase
@@ -244,8 +257,12 @@ export default function FeedPage() {
   }
 
   function editPost(post: Post) {
-    // Unflip before opening form
     setFlippedCards((prev) => { const n = new Set(prev); n.delete(post.id); return n; });
+    const [y, m] = post.data_publicacao.split("-").map(Number);
+    const mes = m || new Date().getMonth() + 1;
+    const ano = y || new Date().getFullYear();
+    setFormMes(mes);
+    setFormAno(ano);
     setFormData({
       data_publicacao: post.data_publicacao,
       tema: post.tema,
@@ -263,9 +280,15 @@ export default function FeedPage() {
   }
 
   function resetForm() {
+    const now = new Date();
+    const mes = now.getMonth() + 1;
+    const ano = now.getFullYear();
+    setFormMes(mes);
+    setFormAno(ano);
+    const temasDoMes = temasData[`${ano}-${mes}`] ?? [];
     setFormData({
       data_publicacao: "",
-      tema: temas[0] || "Geral",
+      tema: temasDoMes[0] ?? "",
       objetivo: OBJETIVOS[0],
       formato: FORMATOS[0],
       sub_formato: SUBFORMATOS[FORMATOS[0]][0],
@@ -275,6 +298,24 @@ export default function FeedPage() {
       status: "Planejado",
       link_publicado: "",
     });
+  }
+
+  // When month/year selector changes: sync data_publicacao and reset tema if needed
+  function handleMesAnoChange(novoMes: number, novoAno: number) {
+    setFormMes(novoMes);
+    setFormAno(novoAno);
+    // Keep the day, clamp to last day of new month
+    const [, , d] = formData.data_publicacao.split("-");
+    const day = parseInt(d || "1");
+    const lastDay = new Date(novoAno, novoMes, 0).getDate();
+    const clampedDay = Math.min(isNaN(day) ? 1 : day, lastDay);
+    const newDate = `${novoAno}-${String(novoMes).padStart(2, "0")}-${String(clampedDay).padStart(2, "0")}`;
+    const newTemas = temasData[`${novoAno}-${novoMes}`] ?? [];
+    setFormData((prev) => ({
+      ...prev,
+      data_publicacao: newDate,
+      tema: newTemas.length > 0 && !newTemas.includes(prev.tema) ? newTemas[0] : prev.tema,
+    }));
   }
 
   function toggleFlip(id: string) {
@@ -389,19 +430,54 @@ export default function FeedPage() {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Mês + Ano — filtram os temas disponíveis */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Mês</label>
+                  <select value={formMes}
+                    onChange={(e) => handleMesAnoChange(Number(e.target.value), formAno)}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]">
+                    {MESES.map((nome, i) => <option key={i + 1} value={i + 1}>{nome}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Ano</label>
+                  <select value={formAno}
+                    onChange={(e) => handleMesAnoChange(formMes, Number(e.target.value))}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]">
+                    {anosDisponiveis.map((a) => <option key={a} value={a}>{a}</option>)}
+                  </select>
+                </div>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">Data de Publicação</label>
                   <input type="date" value={formData.data_publicacao}
-                    onChange={(e) => setFormData({ ...formData, data_publicacao: e.target.value })}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setFormData((prev) => ({ ...prev, data_publicacao: v }));
+                      if (v) {
+                        const [y, m] = v.split("-").map(Number);
+                        if (m && y) { setFormMes(m); setFormAno(y); }
+                      }
+                    }}
                     required className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]" />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Tema</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Tema
+                    {(temasData[`${formAno}-${formMes}`] ?? []).length === 0 && (
+                      <span className="ml-2 text-[10px] text-amber-500 font-normal">(nenhum cadastrado neste mês)</span>
+                    )}
+                  </label>
                   <select value={formData.tema}
                     onChange={(e) => setFormData({ ...formData, tema: e.target.value })}
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]">
-                    {temas.map((t) => <option key={t} value={t}>{t}</option>)}
+                    {(temasData[`${formAno}-${formMes}`] ?? []).map((t) => <option key={t} value={t}>{t}</option>)}
+                    {(temasData[`${formAno}-${formMes}`] ?? []).length === 0 && (
+                      <option value={formData.tema || ""}>{formData.tema || "—"}</option>
+                    )}
                   </select>
                 </div>
                 <div>
@@ -538,20 +614,17 @@ export default function FeedPage() {
                   {/* Status color bar */}
                   <div className={`h-1 w-full flex-shrink-0 ${st.bar}`} />
 
-                  {/* Info section — bottom 2/3 */}
-                  <div className="flex flex-col flex-1 p-3 gap-2 min-h-0">
-                    {/* Date + Status */}
-                    <div className="flex items-center justify-between gap-1">
-                      <span className="text-[10px] text-slate-400 font-medium leading-none">{dataFormatada}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 leading-none ${st.badge} ${st.text}`}>
-                        {post.status}
-                      </span>
-                    </div>
-
+                  {/* Info section — bottom 2/3: tema, objetivo, formato, data, status */}
+                  <div className="flex flex-col flex-1 p-3 gap-2.5 min-h-0">
                     {/* Tema */}
                     <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">{post.tema}</h3>
 
-                    {/* Format pills */}
+                    {/* Objetivo */}
+                    {post.objetivo && (
+                      <p className="text-[11px] text-slate-500 leading-tight line-clamp-1">{post.objetivo}</p>
+                    )}
+
+                    {/* Formato + sub_formato */}
                     <div className="flex flex-wrap gap-1">
                       <span className="px-2 py-0.5 bg-[#085ba7] text-white text-[10px] rounded-full font-medium leading-none">
                         {post.formato}
@@ -563,36 +636,33 @@ export default function FeedPage() {
                       )}
                     </div>
 
-                    {/* Gancho */}
-                    {post.gancho && (
-                      <p className="text-[11px] text-slate-500 italic line-clamp-3 flex-1 leading-relaxed">
-                        &ldquo;{post.gancho}&rdquo;
-                      </p>
-                    )}
+                    {/* Spacer */}
+                    <div className="flex-1" />
 
-                    {/* Footer */}
-                    {post.link_publicado ? (
-                      <div
-                        className="mt-auto border-t border-slate-100 pt-2"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <a
-                          href={publishedUrl!}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-[11px] text-green-600 hover:text-green-700 font-medium"
-                        >
-                          <CheckCircle className="w-3 h-3 flex-shrink-0" />
-                          <span className="truncate">Publicado</span>
-                          <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 ml-auto" />
-                        </a>
+                    {/* Date + Status + link */}
+                    <div className="border-t border-slate-100 pt-2 flex flex-col gap-1.5">
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-[10px] text-slate-400 font-medium leading-none">{dataFormatada}</span>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 leading-none ${st.badge} ${st.text}`}>
+                          {post.status}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="mt-auto flex items-center justify-center gap-1 text-[10px] text-slate-300 pt-2 border-t border-slate-100">
-                        <RefreshCw className="w-2.5 h-2.5" />
-                        Ver detalhes
-                      </div>
-                    )}
+                      {post.link_publicado ? (
+                        <div onClick={(e) => e.stopPropagation()}>
+                          <a href={publishedUrl!} target="_blank" rel="noopener noreferrer"
+                            className="flex items-center gap-1 text-[11px] text-green-600 hover:text-green-700 font-medium">
+                            <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                            <span>Publicado</span>
+                            <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 ml-auto" />
+                          </a>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-center gap-1 text-[10px] text-slate-300">
+                          <RefreshCw className="w-2.5 h-2.5" />
+                          Ver detalhes
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
 
@@ -630,10 +700,18 @@ export default function FeedPage() {
                       </div>
                     </div>
 
+                    {/* Gancho */}
+                    {post.gancho && (
+                      <div className="flex-shrink-0">
+                        <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-1">Gancho</p>
+                        <p className="text-[11px] text-white/80 italic line-clamp-2 leading-relaxed">&ldquo;{post.gancho}&rdquo;</p>
+                      </div>
+                    )}
+
                     {/* Conteúdo */}
                     <div className="flex-1 overflow-hidden">
                       <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-1">Conteúdo</p>
-                      <p className="text-sm text-white/90 line-clamp-4 leading-relaxed">{post.conteudo}</p>
+                      <p className="text-sm text-white/90 line-clamp-3 leading-relaxed">{post.conteudo}</p>
                     </div>
 
                     {/* CTA */}
@@ -648,7 +726,7 @@ export default function FeedPage() {
                     {post.link_publicado && (
                       <div onClick={(e) => e.stopPropagation()}>
                         <a
-                          href={post.link_publicado}
+                          href={publishedUrl!}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-1 text-xs text-blue-200 hover:text-white underline transition-colors"

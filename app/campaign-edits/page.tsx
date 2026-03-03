@@ -125,6 +125,7 @@ export default function CampaignEditsPage() {
             nome_campanha: found.nome_campanha,
             tipo_campanha: found.tipo_campanha,
             nivel_edicao: found.nivel_edicao,
+            canal: found.canal || "",
             data_alteracao: found.data_alteracao,
             descricao_alteracao: found.descricao_alteracao,
             imagens_alteracao: found.imagens_alteracao || [],

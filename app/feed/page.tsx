@@ -2,7 +2,68 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink, CheckCircle } from "lucide-react";
+import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink, CheckCircle, Play, ImageIcon, Layers } from "lucide-react";
+
+function PostThumbnail({ formato, tema }: { formato: string; tema: string }) {
+  if (formato === "Reels") {
+    return (
+      <div className="relative mx-auto rounded-xl overflow-hidden flex-shrink-0" style={{ width: "72px", height: "108px", background: "linear-gradient(160deg, #0f172a 0%, #1e3a5f 60%, #085ba7 100%)" }}>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+        {/* Play button */}
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-full bg-white/25 flex items-center justify-center border border-white/40">
+            <Play className="w-3.5 h-3.5 text-white fill-white ml-0.5" />
+          </div>
+        </div>
+        {/* Label */}
+        <div className="absolute top-1.5 left-1.5">
+          <span className="text-[7px] text-white font-bold bg-[#ff901c] px-1 py-0.5 rounded leading-none">REELS</span>
+        </div>
+        {/* Tema */}
+        <div className="absolute bottom-1.5 left-1.5 right-1.5">
+          <p className="text-[7px] text-white font-semibold line-clamp-2 leading-tight">{tema}</p>
+        </div>
+        {/* Side dots (like reels UI) */}
+        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col gap-1">
+          {[0,1,2].map(i => <div key={i} className="w-0.5 h-0.5 rounded-full bg-white/50" />)}
+        </div>
+      </div>
+    );
+  }
+
+  if (formato === "Carrossel") {
+    return (
+      <div className="relative mx-auto flex-shrink-0" style={{ width: "108px", height: "96px" }}>
+        {/* Stack cards behind */}
+        <div className="absolute rounded-xl" style={{ width: "88px", height: "84px", background: "#c7d8f0", top: "6px", left: "14px" }} />
+        <div className="absolute rounded-xl" style={{ width: "93px", height: "84px", background: "#a3c1e8", top: "3px", left: "7px" }} />
+        {/* Front card */}
+        <div className="absolute rounded-xl overflow-hidden flex flex-col items-center justify-center gap-1.5" style={{ width: "93px", height: "84px", top: "0", left: "0", background: "linear-gradient(135deg, #085ba7 0%, #1a7de8 100%)" }}>
+          <Layers className="w-4 h-4 text-white/50" />
+          <p className="text-[7px] text-white font-semibold text-center px-2 line-clamp-2 leading-tight">{tema}</p>
+        </div>
+        {/* Dot indicators */}
+        <div className="absolute flex gap-0.5 justify-center" style={{ bottom: "0", left: "0", right: "0" }}>
+          {[0,1,2].map(i => <div key={i} className={`rounded-full ${i === 0 ? "w-1.5 h-1.5 bg-[#085ba7]" : "w-1 h-1 bg-slate-300"}`} />)}
+        </div>
+      </div>
+    );
+  }
+
+  // Estático
+  return (
+    <div className="relative mx-auto rounded-xl overflow-hidden flex-shrink-0" style={{ width: "96px", height: "96px", background: "linear-gradient(135deg, #ff901c 0%, #f97316 100%)" }}>
+      <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent" />
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 p-2">
+        <ImageIcon className="w-4 h-4 text-white/50" />
+        <p className="text-[7px] text-white font-bold text-center line-clamp-3 leading-tight">{tema}</p>
+      </div>
+      <div className="absolute bottom-1.5 left-0 right-0 flex justify-center">
+        <span className="text-[6px] text-white/60 font-medium uppercase tracking-wide">ESTÁTICO</span>
+      </div>
+    </div>
+  );
+}
 
 function getLinkDomain(url: string): string {
   try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
@@ -399,7 +460,7 @@ export default function FeedPage() {
               key={post.id}
               onClick={() => toggleFlip(post.id)}
               className="cursor-pointer select-none"
-              style={{ perspective: "1200px", minHeight: "320px" }}
+              style={{ perspective: "1200px", minHeight: "370px" }}
             >
               {/* Flip wrapper */}
               <div
@@ -408,7 +469,7 @@ export default function FeedPage() {
                   transformStyle: "preserve-3d",
                   transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
                   transition: "transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)",
-                  height: "320px",
+                  height: "370px",
                 }}
               >
                 {/* ── FRONT FACE ── */}
@@ -430,6 +491,11 @@ export default function FeedPage() {
 
                     {/* Tema */}
                     <h3 className="text-base font-bold text-slate-900 leading-tight">{post.tema}</h3>
+
+                    {/* Thumbnail preview */}
+                    <div className="flex justify-center py-1">
+                      <PostThumbnail formato={post.formato} tema={post.tema} />
+                    </div>
 
                     {/* Format pills */}
                     <div className="flex flex-wrap gap-1.5">

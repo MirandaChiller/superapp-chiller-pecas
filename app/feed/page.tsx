@@ -16,113 +16,81 @@ function extractInstagramShortcode(input: string): string | null {
   return m?.[1] ?? null;
 }
 
+// Cover thumbnail — fills 100% width x fixed height of the card's top section
 function PostThumbnail({ formato, tema, ogImageUrl, linkPublicado }: {
   formato: string; tema: string; ogImageUrl?: string | null; linkPublicado?: string | null;
 }) {
-  const isReels = formato === "Reels";
-  const containerW = isReels ? 72 : 96;
-  const containerH = isReels ? 108 : 96;
-
-  // Instagram embed iframe — shows the real post without needing any API key
   const igShortcode = extractInstagramShortcode(linkPublicado ?? "");
+
   if (igShortcode) {
-    const iframeW = 326;
-    const iframeH = 380;
-    const scale = containerW / iframeW;
+    // Center the 326px-min iframe in the container and clip sides — cover crop effect
     return (
-      <div
-        className="relative mx-auto rounded-xl flex-shrink-0 shadow-sm ring-1 ring-slate-200"
-        style={{ width: containerW, height: containerH, overflow: "hidden" }}
-      >
-        <div style={{ width: iframeW, height: iframeH, transform: `scale(${scale})`, transformOrigin: "top left", pointerEvents: "none" }}>
+      <div className="absolute inset-0 overflow-hidden" style={{ pointerEvents: "none" }}>
+        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 326, height: "100%" }}>
           <iframe
             src={`https://www.instagram.com/p/${igShortcode}/embed/`}
-            width={iframeW}
-            height={iframeH}
+            width={326}
+            height={500}
             style={{ display: "block", border: "none" }}
             scrolling="no"
           />
-        </div>
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1">
-          <p className="text-[6px] text-white font-semibold line-clamp-1 leading-tight">{tema}</p>
         </div>
       </div>
     );
   }
 
   if (ogImageUrl) {
-    const isReels = formato === "Reels";
     return (
-      <div
-        className="relative mx-auto rounded-xl overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-slate-200"
-        style={{ width: isReels ? "72px" : "96px", height: isReels ? "108px" : "96px" }}
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ogImageUrl} alt={tema} className="w-full h-full object-cover" />
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1">
-          <p className="text-[6px] text-white font-semibold line-clamp-1 leading-tight">{tema}</p>
-        </div>
-      </div>
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={ogImageUrl} alt={tema} className="absolute inset-0 w-full h-full object-cover" />
     );
   }
 
   if (formato === "Reels") {
     return (
-      <div className="relative mx-auto rounded-xl overflow-hidden flex-shrink-0" style={{ width: "72px", height: "108px", background: "linear-gradient(160deg, #0f172a 0%, #1e3a5f 60%, #085ba7 100%)" }}>
+      <>
+        <div className="absolute inset-0" style={{ background: "linear-gradient(160deg, #0f172a 0%, #1e3a5f 60%, #085ba7 100%)" }} />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-        {/* Play button */}
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="w-7 h-7 rounded-full bg-white/25 flex items-center justify-center border border-white/40">
-            <Play className="w-3.5 h-3.5 text-white fill-white ml-0.5" />
+          <div className="w-10 h-10 rounded-full bg-white/25 flex items-center justify-center border border-white/40">
+            <Play className="w-5 h-5 text-white fill-white ml-0.5" />
           </div>
         </div>
-        {/* Label */}
-        <div className="absolute top-1.5 left-1.5">
-          <span className="text-[7px] text-white font-bold bg-[#ff901c] px-1 py-0.5 rounded leading-none">REELS</span>
+        <div className="absolute top-2 left-2">
+          <span className="text-[8px] text-white font-bold bg-[#ff901c] px-1.5 py-0.5 rounded leading-none">REELS</span>
         </div>
-        {/* Tema */}
-        <div className="absolute bottom-1.5 left-1.5 right-1.5">
-          <p className="text-[7px] text-white font-semibold line-clamp-2 leading-tight">{tema}</p>
+        <div className="absolute bottom-2 left-2 right-2">
+          <p className="text-[9px] text-white font-semibold line-clamp-2 leading-tight">{tema}</p>
         </div>
-        {/* Side dots (like reels UI) */}
-        <div className="absolute right-1 top-1/2 -translate-y-1/2 flex flex-col gap-1">
-          {[0,1,2].map(i => <div key={i} className="w-0.5 h-0.5 rounded-full bg-white/50" />)}
-        </div>
-      </div>
+      </>
     );
   }
 
   if (formato === "Carrossel") {
     return (
-      <div className="relative mx-auto flex-shrink-0" style={{ width: "108px", height: "96px" }}>
-        {/* Stack cards behind */}
-        <div className="absolute rounded-xl" style={{ width: "88px", height: "84px", background: "#c7d8f0", top: "6px", left: "14px" }} />
-        <div className="absolute rounded-xl" style={{ width: "93px", height: "84px", background: "#a3c1e8", top: "3px", left: "7px" }} />
-        {/* Front card */}
-        <div className="absolute rounded-xl overflow-hidden flex flex-col items-center justify-center gap-1.5" style={{ width: "93px", height: "84px", top: "0", left: "0", background: "linear-gradient(135deg, #085ba7 0%, #1a7de8 100%)" }}>
-          <Layers className="w-4 h-4 text-white/50" />
-          <p className="text-[7px] text-white font-semibold text-center px-2 line-clamp-2 leading-tight">{tema}</p>
+      <>
+        <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #085ba7 0%, #1a7de8 100%)" }} />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+          <Layers className="w-7 h-7 text-white/50" />
+          <p className="text-[9px] text-white font-semibold text-center px-4 line-clamp-2 leading-tight">{tema}</p>
         </div>
-        {/* Dot indicators */}
-        <div className="absolute flex gap-0.5 justify-center" style={{ bottom: "0", left: "0", right: "0" }}>
-          {[0,1,2].map(i => <div key={i} className={`rounded-full ${i === 0 ? "w-1.5 h-1.5 bg-[#085ba7]" : "w-1 h-1 bg-slate-300"}`} />)}
+        <div className="absolute bottom-2 left-0 right-0 flex gap-1 justify-center">
+          {[0,1,2].map(i => <div key={i} className={`rounded-full ${i === 0 ? "w-2 h-2 bg-white" : "w-1.5 h-1.5 bg-white/40"}`} />)}
         </div>
-      </div>
+      </>
     );
   }
 
   // Estático
   return (
-    <div className="relative mx-auto rounded-xl overflow-hidden flex-shrink-0" style={{ width: "96px", height: "96px", background: "linear-gradient(135deg, #ff901c 0%, #f97316 100%)" }}>
+    <>
+      <div className="absolute inset-0" style={{ background: "linear-gradient(135deg, #ff901c 0%, #f97316 100%)" }} />
       <div className="absolute inset-0 bg-gradient-to-br from-white/15 to-transparent" />
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 p-2">
-        <ImageIcon className="w-4 h-4 text-white/50" />
-        <p className="text-[7px] text-white font-bold text-center line-clamp-3 leading-tight">{tema}</p>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-3">
+        <ImageIcon className="w-7 h-7 text-white/50" />
+        <p className="text-[9px] text-white font-bold text-center line-clamp-3 leading-tight">{tema}</p>
       </div>
-      <div className="absolute bottom-1.5 left-0 right-0 flex justify-center">
-        <span className="text-[6px] text-white/60 font-medium uppercase tracking-wide">ESTÁTICO</span>
-      </div>
-    </div>
+    </>
   );
 }
 
@@ -526,7 +494,7 @@ export default function FeedPage() {
       )}
 
       {/* ─── 3D Flip Card Grid ─── */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
         {postsFiltrados.map((post) => {
           const isFlipped = flippedCards.has(post.id);
           const st = STATUS_STYLE[post.status] || STATUS_STYLE.Planejado;
@@ -535,13 +503,17 @@ export default function FeedPage() {
             return new Date(parseInt(y), parseInt(m) - 1, parseInt(d))
               .toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
           })();
+          const igShortcode = extractInstagramShortcode(post.link_publicado ?? "");
+          const publishedUrl = igShortcode
+            ? `https://www.instagram.com/p/${igShortcode}/`
+            : post.link_publicado;
 
           return (
             <div
               key={post.id}
               onClick={() => toggleFlip(post.id)}
               className="cursor-pointer select-none"
-              style={{ perspective: "1200px", minHeight: "370px" }}
+              style={{ perspective: "1200px" }}
             >
               {/* Flip wrapper */}
               <div
@@ -550,7 +522,7 @@ export default function FeedPage() {
                   transformStyle: "preserve-3d",
                   transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
                   transition: "transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)",
-                  height: "370px",
+                  height: "460px",
                 }}
               >
                 {/* ── FRONT FACE ── */}
@@ -558,64 +530,67 @@ export default function FeedPage() {
                   className="absolute inset-0 bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden flex flex-col"
                   style={{ backfaceVisibility: "hidden" }}
                 >
-                  {/* Colored top bar */}
-                  <div className={`h-1.5 w-full ${st.bar}`} />
+                  {/* Thumbnail — top 1/3, edge-to-edge, no padding */}
+                  <div className="relative h-[155px] flex-shrink-0 bg-slate-100 overflow-hidden rounded-t-2xl">
+                    <PostThumbnail formato={post.formato} tema={post.tema} ogImageUrl={ogImages[post.id]} linkPublicado={post.link_publicado} />
+                  </div>
 
-                  <div className="flex flex-col flex-1 p-5 gap-3">
+                  {/* Status color bar */}
+                  <div className={`h-1 w-full flex-shrink-0 ${st.bar}`} />
+
+                  {/* Info section — bottom 2/3 */}
+                  <div className="flex flex-col flex-1 p-3 gap-2 min-h-0">
                     {/* Date + Status */}
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-slate-400 font-medium">{dataFormatada}</span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${st.badge} ${st.text}`}>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[10px] text-slate-400 font-medium leading-none">{dataFormatada}</span>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 leading-none ${st.badge} ${st.text}`}>
                         {post.status}
                       </span>
                     </div>
 
                     {/* Tema */}
-                    <h3 className="text-base font-bold text-slate-900 leading-tight">{post.tema}</h3>
-
-                    {/* Thumbnail preview */}
-                    <div className="flex justify-center py-1">
-                      <PostThumbnail formato={post.formato} tema={post.tema} ogImageUrl={ogImages[post.id]} linkPublicado={post.link_publicado} />
-                    </div>
+                    <h3 className="text-sm font-bold text-slate-900 leading-snug line-clamp-2">{post.tema}</h3>
 
                     {/* Format pills */}
-                    <div className="flex flex-wrap gap-1.5">
-                      <span className="px-2.5 py-0.5 bg-[#085ba7] text-white text-xs rounded-full font-medium">
+                    <div className="flex flex-wrap gap-1">
+                      <span className="px-2 py-0.5 bg-[#085ba7] text-white text-[10px] rounded-full font-medium leading-none">
                         {post.formato}
                       </span>
-                      <span className="px-2.5 py-0.5 bg-slate-100 text-slate-500 text-xs rounded-full">
-                        {post.sub_formato}
-                      </span>
+                      {post.sub_formato && (
+                        <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] rounded-full leading-none">
+                          {post.sub_formato}
+                        </span>
+                      )}
                     </div>
 
                     {/* Gancho */}
                     {post.gancho && (
-                      <p className="text-sm text-slate-600 italic line-clamp-2 flex-1">
+                      <p className="text-[11px] text-slate-500 italic line-clamp-3 flex-1 leading-relaxed">
                         &ldquo;{post.gancho}&rdquo;
                       </p>
                     )}
 
-                    {/* Flip hint or published link preview */}
+                    {/* Footer */}
                     {post.link_publicado ? (
                       <div
                         className="mt-auto border-t border-slate-100 pt-2"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <a
-                          href={post.link_publicado}
+                          href={publishedUrl!}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-medium"
+                          className="flex items-center gap-1 text-[11px] text-green-600 hover:text-green-700 font-medium"
                         >
-                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
-                          <span className="truncate">Publicado: {getLinkDomain(post.link_publicado)}</span>
-                          <ExternalLink className="w-3 h-3 flex-shrink-0 ml-auto" />
+                          <CheckCircle className="w-3 h-3 flex-shrink-0" />
+                          <span className="truncate">Publicado</span>
+                          <ExternalLink className="w-2.5 h-2.5 flex-shrink-0 ml-auto" />
                         </a>
                       </div>
                     ) : (
-                      <div className="mt-auto flex items-center justify-center gap-1.5 text-xs text-slate-300 pt-2 border-t border-slate-100">
-                        <RefreshCw className="w-3 h-3" />
-                        Clique para ver detalhes
+                      <div className="mt-auto flex items-center justify-center gap-1 text-[10px] text-slate-300 pt-2 border-t border-slate-100">
+                        <RefreshCw className="w-2.5 h-2.5" />
+                        Ver detalhes
                       </div>
                     )}
                   </div>

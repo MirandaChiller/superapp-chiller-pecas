@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink, CheckCircle, Play, ImageIcon, Layers } from "lucide-react";
 
@@ -175,6 +175,26 @@ export default function FeedPage() {
 
   // OG images keyed by post id
   const [ogImages, setOgImages] = useState<Record<string, string | null>>({});
+
+  // Thumbnail peek ("wallet pull") state
+  const [peekPostId, setPeekPostId] = useState<string | null>(null);
+  const [peekRect, setPeekRect] = useState<{ left: number; top: number; width: number } | null>(null);
+  const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  function handleThumbnailEnter(postId: string, e: { currentTarget: HTMLDivElement }) {
+    if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
+    const rect = e.currentTarget.getBoundingClientRect();
+    peekTimerRef.current = setTimeout(() => {
+      setPeekRect({ left: rect.left, top: rect.top, width: rect.width });
+      setPeekPostId(postId);
+    }, 2000);
+  }
+
+  function handleThumbnailLeave() {
+    if (peekTimerRef.current) { clearTimeout(peekTimerRef.current); peekTimerRef.current = null; }
+    setPeekPostId(null);
+    setPeekRect(null);
+  }
 
   const [formData, setFormData] = useState({
     data_publicacao: "",
@@ -608,7 +628,11 @@ export default function FeedPage() {
                   style={{ backfaceVisibility: "hidden" }}
                 >
                   {/* Thumbnail — top section, edge-to-edge, no padding */}
-                  <div className="relative h-[260px] flex-shrink-0 bg-slate-100 overflow-hidden rounded-t-2xl">
+                  <div
+                    className="relative h-[260px] flex-shrink-0 bg-slate-100 overflow-hidden rounded-t-2xl"
+                    onMouseEnter={(e) => handleThumbnailEnter(post.id, e)}
+                    onMouseLeave={handleThumbnailLeave}
+                  >
                     <PostThumbnail formato={post.formato} tema={post.tema} ogImageUrl={ogImages[post.id]} linkPublicado={post.link_publicado} />
                   </div>
 
@@ -768,6 +792,42 @@ export default function FeedPage() {
           </button>
         </div>
       )}
+
+      {/* ── Thumbnail peek overlay — wallet-pull animation ── */}
+      {peekPostId && peekRect && (() => {
+        const peekPost = postsFiltrados.find(p => p.id === peekPostId);
+        if (!peekPost) return null;
+        const cardW = peekRect.width;
+        const cardH = Math.round(cardW * 1.25); // ~portrait ratio
+        return (
+          <div
+            onMouseEnter={() => { /* keep open while hovering overlay */ }}
+            onMouseLeave={handleThumbnailLeave}
+            style={{
+              position: "fixed",
+              left: peekRect.left,
+              top: peekRect.top,
+              width: cardW,
+              height: cardH,
+              zIndex: 9999,
+              borderRadius: 14,
+              overflow: "hidden",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.38), 0 8px 24px rgba(0,0,0,0.22)",
+              animation: "walletPull 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards",
+              transformOrigin: "50% 100%",
+            }}
+          >
+            <div className="relative w-full h-full bg-slate-100">
+              <PostThumbnail
+                formato={peekPost.formato}
+                tema={peekPost.tema}
+                ogImageUrl={ogImages[peekPost.id]}
+                linkPublicado={peekPost.link_publicado}
+              />
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 }

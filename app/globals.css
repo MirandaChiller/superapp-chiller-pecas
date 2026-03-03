@@ -59,3 +59,15 @@ textarea,
 select {
   color: #1e293b !important;
 }
+
+/* Wallet-pull peek animation for post thumbnails */
+@keyframes walletPull {
+  0%   { transform: translateY(28px) scale(0.90) rotate(-1.2deg); opacity: 0; }
+  50%  { opacity: 1; }
+  78%  { transform: translateY(-12px) scale(1.05) rotate(0.3deg); }
+  100% { transform: translateY(-20px) scale(1)    rotate(0deg);   opacity: 1; }
+}
+@keyframes walletRelease {
+  0%   { transform: translateY(-20px) scale(1) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(28px) scale(0.90) rotate(-1.2deg); opacity: 0; }
+}

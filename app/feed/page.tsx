@@ -599,7 +599,7 @@ export default function FeedPage() {
                   transformStyle: "preserve-3d",
                   transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
                   transition: "transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)",
-                  height: "520px",
+                  height: "480px",
                 }}
               >
                 {/* ── FRONT FACE ── */}
@@ -608,7 +608,7 @@ export default function FeedPage() {
                   style={{ backfaceVisibility: "hidden" }}
                 >
                   {/* Thumbnail — top section, edge-to-edge, no padding */}
-                  <div className="relative h-[300px] flex-shrink-0 bg-slate-100 overflow-hidden rounded-t-2xl">
+                  <div className="relative h-[260px] flex-shrink-0 bg-slate-100 overflow-hidden rounded-t-2xl">
                     <PostThumbnail formato={post.formato} tema={post.tema} ogImageUrl={ogImages[post.id]} linkPublicado={post.link_publicado} />
                   </div>
 

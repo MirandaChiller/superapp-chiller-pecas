@@ -47,7 +47,7 @@ const NIVEIS_PERFORMANCE_MAX = [
 ];
 
 const CANAIS = [
-  "ML Chiller", "ML Azuq", "Shopee", "Magalu",
+  "Google", "ML Chiller", "ML Azuq", "Shopee", "Magalu",
   "Amazon", "Bing", "Meta", "LinkedIn"
 ];
 

@@ -4,7 +4,52 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink, CheckCircle, Play, ImageIcon, Layers } from "lucide-react";
 
-function PostThumbnail({ formato, tema, ogImageUrl }: { formato: string; tema: string; ogImageUrl?: string | null }) {
+function extractInstagramShortcode(input: string): string | null {
+  if (!input) return null;
+  // Full embed code — extract from data-instgrm-permalink
+  if (input.includes("data-instgrm-permalink")) {
+    const m = input.match(/data-instgrm-permalink=["']([^"'?]+)/i);
+    if (m?.[1]) return extractInstagramShortcode(m[1]);
+  }
+  // Direct URL — /p/, /reel/, /tv/
+  const m = input.match(/instagram\.com\/(?:p|reel|tv)\/([A-Za-z0-9_-]+)/i);
+  return m?.[1] ?? null;
+}
+
+function PostThumbnail({ formato, tema, ogImageUrl, linkPublicado }: {
+  formato: string; tema: string; ogImageUrl?: string | null; linkPublicado?: string | null;
+}) {
+  const isReels = formato === "Reels";
+  const containerW = isReels ? 72 : 96;
+  const containerH = isReels ? 108 : 96;
+
+  // Instagram embed iframe — shows the real post without needing any API key
+  const igShortcode = extractInstagramShortcode(linkPublicado ?? "");
+  if (igShortcode) {
+    const iframeW = 326;
+    const iframeH = 380;
+    const scale = containerW / iframeW;
+    return (
+      <div
+        className="relative mx-auto rounded-xl flex-shrink-0 shadow-sm ring-1 ring-slate-200"
+        style={{ width: containerW, height: containerH, overflow: "hidden" }}
+      >
+        <div style={{ width: iframeW, height: iframeH, transform: `scale(${scale})`, transformOrigin: "top left", pointerEvents: "none" }}>
+          <iframe
+            src={`https://www.instagram.com/p/${igShortcode}/embed/`}
+            width={iframeW}
+            height={iframeH}
+            style={{ display: "block", border: "none" }}
+            scrolling="no"
+          />
+        </div>
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1">
+          <p className="text-[6px] text-white font-semibold line-clamp-1 leading-tight">{tema}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (ogImageUrl) {
     const isReels = formato === "Reels";
     return (
@@ -455,11 +500,12 @@ export default function FeedPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Link Publicado (Opcional)</label>
-                  <input type="url" value={formData.link_publicado}
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Link ou Embed Publicado (Opcional)</label>
+                  <textarea value={formData.link_publicado}
                     onChange={(e) => setFormData({ ...formData, link_publicado: e.target.value })}
-                    placeholder="https://instagram.com/p/..."
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7]" />
+                    placeholder={"Cole o link do post ou o código de incorporação (<blockquote...>)"}
+                    rows={2}
+                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] resize-none text-sm" />
                 </div>
               </div>
 
@@ -529,7 +575,7 @@ export default function FeedPage() {
 
                     {/* Thumbnail preview */}
                     <div className="flex justify-center py-1">
-                      <PostThumbnail formato={post.formato} tema={post.tema} ogImageUrl={ogImages[post.id]} />
+                      <PostThumbnail formato={post.formato} tema={post.tema} ogImageUrl={ogImages[post.id]} linkPublicado={post.link_publicado} />
                     </div>
 
                     {/* Format pills */}

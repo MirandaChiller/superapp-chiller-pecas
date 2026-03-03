@@ -23,14 +23,15 @@ function PostThumbnail({ formato, tema, ogImageUrl, linkPublicado }: {
   const igShortcode = extractInstagramShortcode(linkPublicado ?? "");
 
   if (igShortcode) {
-    // Center the 326px-min iframe in the container and clip sides — cover crop effect
+    // top: -56 pushes Instagram's profile header above the container,
+    // so the post image fills the thumbnail from the very top.
     return (
       <div className="absolute inset-0 overflow-hidden" style={{ pointerEvents: "none" }}>
-        <div style={{ position: "absolute", top: 0, left: "50%", transform: "translateX(-50%)", width: 326, height: "100%" }}>
+        <div style={{ position: "absolute", top: -56, left: "50%", transform: "translateX(-50%)", width: 326 }}>
           <iframe
             src={`https://www.instagram.com/p/${igShortcode}/embed/`}
             width={326}
-            height={500}
+            height={700}
             style={{ display: "block", border: "none" }}
             scrolling="no"
           />
@@ -598,7 +599,7 @@ export default function FeedPage() {
                   transformStyle: "preserve-3d",
                   transform: isFlipped ? "rotateY(180deg)" : "rotateY(0deg)",
                   transition: "transform 0.65s cubic-bezier(0.4, 0, 0.2, 1)",
-                  height: "460px",
+                  height: "520px",
                 }}
               >
                 {/* ── FRONT FACE ── */}
@@ -606,8 +607,8 @@ export default function FeedPage() {
                   className="absolute inset-0 bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden flex flex-col"
                   style={{ backfaceVisibility: "hidden" }}
                 >
-                  {/* Thumbnail — top 1/3, edge-to-edge, no padding */}
-                  <div className="relative h-[155px] flex-shrink-0 bg-slate-100 overflow-hidden rounded-t-2xl">
+                  {/* Thumbnail — top section, edge-to-edge, no padding */}
+                  <div className="relative h-[300px] flex-shrink-0 bg-slate-100 overflow-hidden rounded-t-2xl">
                     <PostThumbnail formato={post.formato} tema={post.tema} ogImageUrl={ogImages[post.id]} linkPublicado={post.link_publicado} />
                   </div>
 

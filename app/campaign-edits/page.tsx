@@ -2,13 +2,14 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn, CheckCircle, AlertCircle, Copy, Check } from "lucide-react";
+import { Plus, Save, X, Upload, Calendar, FileText, Target, ChevronDown, ChevronUp, Edit, Trash2, ZoomIn, CheckCircle, AlertCircle, Copy, Check, Download } from "lucide-react";
 
 interface CampaignEdit {
   id?: string;
   nome_campanha: string;
   tipo_campanha: string;
   nivel_edicao: string;
+  canal: string;
   data_alteracao: string;
   descricao_alteracao: string;
   imagens_alteracao: string[];
@@ -25,6 +26,10 @@ const NIVEIS_PESQUISA = [
   "Anúncio",
   "Palavra-chave",
   "Palavra-chave negativa",
+  "Locais",
+  "Criativo",
+  "ROAS",
+  "CPA",
   "Outros"
 ];
 
@@ -34,7 +39,16 @@ const NIVEIS_PERFORMANCE_MAX = [
   "Indicadores de público-alvo",
   "Temas de pesquisa",
   "Termo de pesquisa negativa",
-  "Canais bloqueados"
+  "Canais bloqueados",
+  "Locais",
+  "Criativo",
+  "ROAS",
+  "CPA"
+];
+
+const CANAIS = [
+  "ML Chiller", "ML Azuq", "Shopee", "Magalu",
+  "Amazon", "Bing", "Meta", "LinkedIn"
 ];
 
 export default function CampaignEditsPage() {
@@ -46,6 +60,7 @@ export default function CampaignEditsPage() {
   const [filterTipo, setFilterTipo] = useState<string>("Todos");
   const [filterDataDe, setFilterDataDe] = useState<string>("");
   const [filterDataAte, setFilterDataAte] = useState<string>("");
+  const [filterCanal, setFilterCanal] = useState<string>("Todos");
   const [showPendentes, setShowPendentes] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
@@ -56,6 +71,7 @@ export default function CampaignEditsPage() {
     nome_campanha: "",
     tipo_campanha: "Pesquisa",
     nivel_edicao: "",
+    canal: "",
     data_alteracao: new Date().toISOString().split('T')[0],
     descricao_alteracao: "",
     imagens_alteracao: [],
@@ -83,6 +99,10 @@ export default function CampaignEditsPage() {
       );
     }
 
+    if (filterCanal !== "Todos") {
+      filtered = filtered.filter(edit => edit.canal === filterCanal);
+    }
+
     if (filterDataDe) {
       filtered = filtered.filter(edit => edit.data_alteracao >= filterDataDe);
     }
@@ -92,7 +112,7 @@ export default function CampaignEditsPage() {
     }
 
     setFilteredEdits(filtered);
-  }, [filterTipo, edits, showPendentes, filterDataDe, filterDataAte]);
+  }, [filterTipo, edits, showPendentes, filterDataDe, filterDataAte, filterCanal]);
 
   // Open edit form from URL param (deep link: /campaign-edits?edit=<id>)
   useEffect(() => {
@@ -146,6 +166,7 @@ export default function CampaignEditsPage() {
             nome_campanha: formData.nome_campanha,
             tipo_campanha: formData.tipo_campanha,
             nivel_edicao: formData.nivel_edicao,
+            canal: formData.canal,
             data_alteracao: formData.data_alteracao,
             descricao_alteracao: formData.descricao_alteracao,
             imagens_alteracao: formData.imagens_alteracao,
@@ -166,6 +187,7 @@ export default function CampaignEditsPage() {
             nome_campanha: formData.nome_campanha,
             tipo_campanha: formData.tipo_campanha,
             nivel_edicao: formData.nivel_edicao,
+            canal: formData.canal,
             data_alteracao: formData.data_alteracao,
             descricao_alteracao: formData.descricao_alteracao,
             imagens_alteracao: formData.imagens_alteracao,
@@ -191,6 +213,7 @@ export default function CampaignEditsPage() {
       nome_campanha: "",
       tipo_campanha: "Pesquisa",
       nivel_edicao: "",
+      canal: "",
       data_alteracao: new Date().toISOString().split('T')[0],
       descricao_alteracao: "",
       imagens_alteracao: [],
@@ -206,6 +229,7 @@ export default function CampaignEditsPage() {
       nome_campanha: edit.nome_campanha,
       tipo_campanha: edit.tipo_campanha,
       nivel_edicao: edit.nivel_edicao,
+      canal: edit.canal || "",
       data_alteracao: edit.data_alteracao,
       descricao_alteracao: edit.descricao_alteracao,
       imagens_alteracao: edit.imagens_alteracao || [],
@@ -298,6 +322,7 @@ export default function CampaignEditsPage() {
       data ? new Date(data).toLocaleDateString('pt-BR') : "";
 
     const texto = [
+      `Canal: ${edit.canal || "(não definido)"}`,
       `Nome da campanha: ${edit.nome_campanha}`,
       `Tipo de Campanha: ${edit.tipo_campanha}`,
       `Nível de edição: ${edit.nivel_edicao}`,
@@ -327,8 +352,37 @@ export default function CampaignEditsPage() {
     return diff;
   }
 
-  const niveisDisponiveis = formData.tipo_campanha === "Pesquisa" 
-    ? NIVEIS_PESQUISA 
+  function exportarCSV() {
+    const headers = [
+      'Canal', 'Nome da Campanha', 'Tipo de Campanha', 'Nível de Edição',
+      'Data da Alteração', 'Descrição da Alteração', 'Motivo',
+      'Data de Revisão', 'Observações da Revisão', 'Revisado em'
+    ];
+    const rows = filteredEdits.map(e => [
+      e.canal || '',
+      e.nome_campanha,
+      e.tipo_campanha,
+      e.nivel_edicao,
+      e.data_alteracao,
+      e.descricao_alteracao,
+      e.motivo,
+      e.data_revisao || '',
+      e.observacoes_revisao || '',
+      e.data_revisao_concluida || '',
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`).join(','));
+
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `edicoes-campanhas-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const niveisDisponiveis = formData.tipo_campanha === "Pesquisa"
+    ? NIVEIS_PESQUISA
     : NIVEIS_PERFORMANCE_MAX;
 
   const pendentesCount = edits.filter(isPendente).length;
@@ -346,17 +400,37 @@ export default function CampaignEditsPage() {
             <p className="text-slate-600">Registre e acompanhe alterações em campanhas Google Ads</p>
           </div>
         </div>
-        <button
-          onClick={() => {
-            resetForm();
-            setShowForm(true);
-          }}
-          className="flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
-        >
-          <Plus className="w-5 h-5" />
-          <span>Nova Edição</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={exportarCSV}
+            className="flex items-center space-x-2 px-4 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-all font-semibold"
+            title="Exportar dados filtrados como CSV"
+          >
+            <Download className="w-5 h-5" />
+            <span>Exportar CSV</span>
+          </button>
+          <button
+            onClick={() => {
+              resetForm();
+              setShowForm(true);
+            }}
+            className="flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+          >
+            <Plus className="w-5 h-5" />
+            <span>Nova Edição</span>
+          </button>
+        </div>
       </div>
+
+      {/* SQL migration note for canal column */}
+      <details className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+        <summary className="cursor-pointer font-semibold select-none">
+          ⚠️ Novo campo &quot;Canal&quot; — execute o SQL no Supabase se ainda não fez
+        </summary>
+        <pre className="mt-2 bg-slate-900 text-green-400 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap">
+{`ALTER TABLE campaign_edits ADD COLUMN IF NOT EXISTS canal text DEFAULT '';`}
+        </pre>
+      </details>
 
       {/* Alerta de Pendentes */}
       {pendentesCount > 0 && !showPendentes && (
@@ -434,6 +508,27 @@ export default function CampaignEditsPage() {
           <div className="text-sm text-slate-600 font-medium">
             {filteredEdits.length} edição{filteredEdits.length !== 1 ? 'ões' : ''}
           </div>
+        </div>
+
+        {/* Filtro de canal */}
+        <div className="mt-3 pt-3 border-t border-slate-100 flex items-center gap-3 flex-wrap">
+          <span className="text-sm font-semibold text-slate-700">Canal:</span>
+          <select
+            value={filterCanal}
+            onChange={e => setFilterCanal(e.target.value)}
+            className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#085ba7] focus:border-transparent"
+          >
+            <option value="Todos">Todos os canais</option>
+            {CANAIS.map(c => <option key={c} value={c}>{c}</option>)}
+          </select>
+          {filterCanal !== "Todos" && (
+            <button
+              onClick={() => setFilterCanal("Todos")}
+              className="px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg transition-colors"
+            >
+              Limpar canal
+            </button>
+          )}
         </div>
 
         {/* Filtro de data */}
@@ -516,6 +611,22 @@ export default function CampaignEditsPage() {
                 >
                   <option value="Pesquisa">Pesquisa</option>
                   <option value="Performance Max">Performance Max</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Canal
+                </label>
+                <select
+                  value={formData.canal}
+                  onChange={(e) => setFormData({ ...formData, canal: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] focus:border-transparent font-medium"
+                >
+                  <option value="">Selecione o canal...</option>
+                  {CANAIS.map(c => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
                 </select>
               </div>
 
@@ -751,6 +862,11 @@ export default function CampaignEditsPage() {
                           <span className="px-2 py-1 bg-slate-600 text-white text-xs font-medium rounded">
                             {edit.nivel_edicao}
                           </span>
+                          {edit.canal && (
+                            <span className="px-2 py-1 bg-[#ff901c] text-white text-xs font-medium rounded">
+                              {edit.canal}
+                            </span>
+                          )}
                           <span className="text-xs text-slate-500">
                             {new Date(edit.data_alteracao).toLocaleDateString('pt-BR')}
                           </span>

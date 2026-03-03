@@ -13,6 +13,7 @@ interface MesData {
   intensidade: "Baixa" | "Normal" | "Alta" | "Muito Alta";
   observacoes: string;
   postsPorSemana: number;
+  freqModo: "dia" | "semana" | "mes";
   temas: Tema[];
 }
 
@@ -43,6 +44,7 @@ const DEFAULT_MES: MesData = {
   intensidade: "Normal",
   observacoes: "",
   postsPorSemana: 3,
+  freqModo: "semana",
   temas: DEFAULT_TEMAS,
 };
 
@@ -56,6 +58,7 @@ CREATE TABLE IF NOT EXISTS content_pie_mensal (
   intensidade text DEFAULT 'Normal',
   observacoes text DEFAULT '',
   posts_por_semana integer DEFAULT 3,
+  freq_modo text DEFAULT 'semana',
   temas jsonb DEFAULT '[]'::jsonb,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
@@ -65,6 +68,7 @@ CREATE TABLE IF NOT EXISTS content_pie_mensal (
 -- Se a tabela já existia, adicione as colunas novas:
 ALTER TABLE content_pie_mensal
   ADD COLUMN IF NOT EXISTS posts_por_semana integer DEFAULT 3,
+  ADD COLUMN IF NOT EXISTS freq_modo text DEFAULT 'semana',
   ADD COLUMN IF NOT EXISTS temas jsonb DEFAULT '[]'::jsonb;`;
 
 export default function ContentPiePage() {
@@ -111,6 +115,7 @@ export default function ContentPiePage() {
           intensidade: row.intensidade || "Normal",
           observacoes: row.observacoes || "",
           postsPorSemana: row.posts_por_semana ?? 3,
+          freqModo: (row.freq_modo as "dia" | "semana" | "mes") || "semana",
           temas: Array.isArray(row.temas) && row.temas.length > 0
             ? row.temas
             : [...DEFAULT_TEMAS],
@@ -134,6 +139,7 @@ export default function ContentPiePage() {
         intensidade: d.intensidade,
         observacoes: d.observacoes,
         posts_por_semana: d.postsPorSemana,
+        freq_modo: d.freqModo,
         temas: d.temas,
         updated_at: new Date().toISOString(),
       },
@@ -193,9 +199,18 @@ export default function ContentPiePage() {
   const dialogData: MesData = dialogKey
     ? (planejamento[dialogKey] || { ...DEFAULT_MES, temas: [...DEFAULT_TEMAS] })
     : { ...DEFAULT_MES, temas: [...DEFAULT_TEMAS] };
-  const dialogPostsMes = Math.round(dialogData.postsPorSemana * (52 / 12));
+  const dialogPostsMes =
+    dialogData.freqModo === "dia" ? Math.round(dialogData.postsPorSemana * 30) :
+    dialogData.freqModo === "mes" ? dialogData.postsPorSemana :
+    Math.round(dialogData.postsPorSemana * (52 / 12));
   const dialogTotalPct = dialogData.temas.reduce((s, t) => s + t.percentual, 0);
   const isSavingDialog = dialogKey ? savingMes === dialogKey : false;
+
+  function calcPostsMes(d: MesData): number {
+    return d.freqModo === "dia" ? Math.round(d.postsPorSemana * 30) :
+           d.freqModo === "mes" ? d.postsPorSemana :
+           Math.round(d.postsPorSemana * (52 / 12));
+  }
 
   if (loading) {
     return (
@@ -295,7 +310,7 @@ export default function ContentPiePage() {
           const mesData = planejamento[key];
           const hasContent = !!mesData;
           const style = INTENSIDADE_STYLE[hasContent ? mesData.intensidade : "Normal"];
-          const postsMes = hasContent ? Math.round(mesData.postsPorSemana * (52 / 12)) : "—";
+          const postsMes = hasContent ? calcPostsMes(mesData) : "—";
           const topTemas = hasContent
             ? mesData.temas.slice(0, 2).map((t) => t.nome).filter(Boolean).join(" · ")
             : "";
@@ -366,13 +381,38 @@ export default function ContentPiePage() {
                 <label className="block text-sm font-semibold text-slate-700 mb-2">
                   Frequência de Publicação
                 </label>
-                <div className="flex items-end gap-4 flex-wrap">
+                {/* Mode selector */}
+                <div className="flex gap-1 mb-3 bg-slate-100 p-1 rounded-lg">
+                  {([
+                    { value: "dia", label: "Por dia" },
+                    { value: "semana", label: "Por semana" },
+                    { value: "mes", label: "Por mês" },
+                  ] as const).map(({ value, label }) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setMesField(anoAtivo, dialogMes, "freqModo", value)}
+                      className={`flex-1 py-1.5 rounded-md text-xs font-semibold transition-all ${
+                        dialogData.freqModo === value
+                          ? "bg-[#085ba7] text-white shadow-sm"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {/* Input */}
+                <div className="flex items-end gap-4">
                   <div>
-                    <label className="block text-xs text-slate-500 mb-1">Posts por semana</label>
+                    <label className="block text-xs text-slate-500 mb-1">
+                      {dialogData.freqModo === "dia" ? "Posts por dia" :
+                       dialogData.freqModo === "semana" ? "Posts por semana" : "Posts por mês"}
+                    </label>
                     <input
                       type="number"
                       min="1"
-                      max="30"
+                      max="60"
                       value={dialogData.postsPorSemana}
                       onChange={(e) =>
                         setMesField(anoAtivo, dialogMes, "postsPorSemana", parseInt(e.target.value) || 1)
@@ -380,22 +420,21 @@ export default function ContentPiePage() {
                       className="w-28 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] text-center"
                     />
                   </div>
-                  <div>
-                    <label className="block text-xs text-slate-500 mb-1">Posts por mês (calculado)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      value={dialogPostsMes}
-                      onChange={(e) => {
-                        const m = parseInt(e.target.value) || 1;
-                        setMesField(anoAtivo, dialogMes, "postsPorSemana", Math.round(m / (52 / 12)));
-                      }}
-                      className="w-28 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] text-center"
-                    />
-                  </div>
+                  {dialogData.freqModo !== "mes" && (
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Total por mês</label>
+                      <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-center font-bold text-[#085ba7] w-28">
+                        {dialogPostsMes}
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs text-slate-400 mt-1.5">
-                  {dialogData.postsPorSemana} post{dialogData.postsPorSemana !== 1 ? "s" : ""}/semana × 4,33 semanas ={" "}
+                  {dialogData.freqModo === "dia"
+                    ? `${dialogData.postsPorSemana} post${dialogData.postsPorSemana !== 1 ? "s" : ""}/dia × 30 dias = `
+                    : dialogData.freqModo === "semana"
+                    ? `${dialogData.postsPorSemana} post${dialogData.postsPorSemana !== 1 ? "s" : ""}/semana × 4,33 semanas = `
+                    : "Total mensal: "}
                   <strong className="text-slate-600">{dialogPostsMes} posts/mês</strong>
                 </p>
               </div>

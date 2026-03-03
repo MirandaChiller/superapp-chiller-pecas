@@ -9,7 +9,7 @@ import {
 import { CheckSquare } from "lucide-react";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: Home },
+  { name: "Início", href: "/", icon: Home },
   { name: "Personas", href: "/personas", icon: Users },
   { name: "Posicionamento", href: "/posicionamento", icon: Target },
   { name: "Temas & Intensidades", href: "/content-pie", icon: PieChart },

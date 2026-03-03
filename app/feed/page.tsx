@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink } from "lucide-react";
+import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink, CheckCircle } from "lucide-react";
+
+function getLinkDomain(url: string): string {
+  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return url; }
+}
 
 const OBJETIVOS = [
   "Alcance & Visibilidade",
@@ -444,11 +448,29 @@ export default function FeedPage() {
                       </p>
                     )}
 
-                    {/* Flip hint */}
-                    <div className="mt-auto flex items-center justify-center gap-1.5 text-xs text-slate-300 pt-2 border-t border-slate-100">
-                      <RefreshCw className="w-3 h-3" />
-                      Clique para ver detalhes
-                    </div>
+                    {/* Flip hint or published link preview */}
+                    {post.link_publicado ? (
+                      <div
+                        className="mt-auto border-t border-slate-100 pt-2"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <a
+                          href={post.link_publicado}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-medium"
+                        >
+                          <CheckCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span className="truncate">Publicado: {getLinkDomain(post.link_publicado)}</span>
+                          <ExternalLink className="w-3 h-3 flex-shrink-0 ml-auto" />
+                        </a>
+                      </div>
+                    ) : (
+                      <div className="mt-auto flex items-center justify-center gap-1.5 text-xs text-slate-300 pt-2 border-t border-slate-100">
+                        <RefreshCw className="w-3 h-3" />
+                        Clique para ver detalhes
+                      </div>
+                    )}
                   </div>
                 </div>
 

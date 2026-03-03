@@ -180,18 +180,28 @@ export default function FeedPage() {
   const [peekPostId, setPeekPostId] = useState<string | null>(null);
   const [peekRect, setPeekRect] = useState<{ left: number; top: number; width: number } | null>(null);
   const peekTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // ref so mouseLeave on thumbnail knows whether the overlay is already showing
+  const peekActiveRef = useRef(false);
 
   function handleThumbnailEnter(postId: string, e: { currentTarget: HTMLDivElement }) {
     if (peekTimerRef.current) clearTimeout(peekTimerRef.current);
     const rect = e.currentTarget.getBoundingClientRect();
     peekTimerRef.current = setTimeout(() => {
+      peekActiveRef.current = true;
       setPeekRect({ left: rect.left, top: rect.top, width: rect.width });
       setPeekPostId(postId);
     }, 2000);
   }
 
+  // Called when mouse leaves the thumbnail — only cancel a pending timer;
+  // if the overlay is already showing, let the overlay's own onMouseLeave close it.
   function handleThumbnailLeave() {
     if (peekTimerRef.current) { clearTimeout(peekTimerRef.current); peekTimerRef.current = null; }
+    if (!peekActiveRef.current) { setPeekPostId(null); setPeekRect(null); }
+  }
+
+  function handlePeekLeave() {
+    peekActiveRef.current = false;
     setPeekPostId(null);
     setPeekRect(null);
   }
@@ -798,15 +808,17 @@ export default function FeedPage() {
         const peekPost = postsFiltrados.find(p => p.id === peekPostId);
         if (!peekPost) return null;
         const cardW = peekRect.width;
-        const cardH = Math.round(cardW * 1.25); // ~portrait ratio
+        // Tall enough to show the full post; og images rendered with object-contain
+        const cardH = Math.round(cardW * 1.35);
+        const ogUrl = ogImages[peekPost.id];
         return (
           <div
-            onMouseEnter={() => { /* keep open while hovering overlay */ }}
-            onMouseLeave={handleThumbnailLeave}
+            onMouseLeave={handlePeekLeave}
             style={{
               position: "fixed",
               left: peekRect.left,
-              top: peekRect.top,
+              // anchor at the bottom edge of the thumbnail so the card "slides up" from there
+              top: peekRect.top - cardH + 260,
               width: cardW,
               height: cardH,
               zIndex: 9999,
@@ -815,16 +827,27 @@ export default function FeedPage() {
               boxShadow: "0 24px 64px rgba(0,0,0,0.38), 0 8px 24px rgba(0,0,0,0.22)",
               animation: "walletPull 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards",
               transformOrigin: "50% 100%",
+              background: "#f1f5f9",
             }}
           >
-            <div className="relative w-full h-full bg-slate-100">
-              <PostThumbnail
-                formato={peekPost.formato}
-                tema={peekPost.tema}
-                ogImageUrl={ogImages[peekPost.id]}
-                linkPublicado={peekPost.link_publicado}
+            {ogUrl ? (
+              // Show the entire image without cropping
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={ogUrl}
+                alt={peekPost.tema}
+                style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }}
               />
-            </div>
+            ) : (
+              <div className="relative w-full h-full">
+                <PostThumbnail
+                  formato={peekPost.formato}
+                  tema={peekPost.tema}
+                  ogImageUrl={null}
+                  linkPublicado={peekPost.link_publicado}
+                />
+              </div>
+            )}
           </div>
         );
       })()}

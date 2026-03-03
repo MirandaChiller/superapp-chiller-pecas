@@ -4,7 +4,23 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink, CheckCircle, Play, ImageIcon, Layers } from "lucide-react";
 
-function PostThumbnail({ formato, tema }: { formato: string; tema: string }) {
+function PostThumbnail({ formato, tema, ogImageUrl }: { formato: string; tema: string; ogImageUrl?: string | null }) {
+  if (ogImageUrl) {
+    const isReels = formato === "Reels";
+    return (
+      <div
+        className="relative mx-auto rounded-xl overflow-hidden flex-shrink-0 shadow-sm ring-1 ring-slate-200"
+        style={{ width: isReels ? "72px" : "96px", height: isReels ? "108px" : "96px" }}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={ogImageUrl} alt={tema} className="w-full h-full object-cover" />
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/60 to-transparent px-1.5 py-1">
+          <p className="text-[6px] text-white font-semibold line-clamp-1 leading-tight">{tema}</p>
+        </div>
+      </div>
+    );
+  }
+
   if (formato === "Reels") {
     return (
       <div className="relative mx-auto rounded-xl overflow-hidden flex-shrink-0" style={{ width: "72px", height: "108px", background: "linear-gradient(160deg, #0f172a 0%, #1e3a5f 60%, #085ba7 100%)" }}>
@@ -132,6 +148,9 @@ export default function FeedPage() {
   const [filterDateFrom, setFilterDateFrom] = useState("");
   const [filterDateTo, setFilterDateTo] = useState("");
 
+  // OG images keyed by post id
+  const [ogImages, setOgImages] = useState<Record<string, string | null>>({});
+
   const [formData, setFormData] = useState({
     data_publicacao: "",
     tema: "",
@@ -146,6 +165,22 @@ export default function FeedPage() {
   });
 
   useEffect(() => { loadData(); }, []);
+
+  // Fetch OG images for posts that have a published link
+  useEffect(() => {
+    const postsWithLinks = posts.filter((p) => p.link_publicado && !(p.id in ogImages));
+    if (postsWithLinks.length === 0) return;
+    postsWithLinks.forEach(async (post) => {
+      try {
+        const res = await fetch(`/api/og-image?url=${encodeURIComponent(post.link_publicado!)}`);
+        const data = await res.json();
+        setOgImages((prev) => ({ ...prev, [post.id]: data.imageUrl ?? null }));
+      } catch {
+        setOgImages((prev) => ({ ...prev, [post.id]: null }));
+      }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [posts]);
 
   async function loadData() {
     const { data: contentPieData } = await supabase
@@ -494,7 +529,7 @@ export default function FeedPage() {
 
                     {/* Thumbnail preview */}
                     <div className="flex justify-center py-1">
-                      <PostThumbnail formato={post.formato} tema={post.tema} />
+                      <PostThumbnail formato={post.formato} tema={post.tema} ogImageUrl={ogImages[post.id]} />
                     </div>
 
                     {/* Format pills */}

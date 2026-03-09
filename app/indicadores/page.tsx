@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import {
-  TrendingUp, Plus, Trash2, RefreshCw,
+  TrendingUp, Plus, Trash2, RefreshCw, Pencil,
   Heart, MessageCircle, Bookmark, Share2, UserPlus, Eye,
 } from "lucide-react";
 
@@ -52,29 +52,30 @@ function MetricCard({
   ogImage,
   onDelete,
   onUpdate,
+  onEdit,
   updating,
 }: {
   metrica: Metrica;
   ogImage: string | null | undefined;
   onDelete: (id: string) => void | Promise<void>;
   onUpdate: (id: string, link: string | null | undefined) => Promise<void>;
+  onEdit: (metrica: Metrica) => void;
   updating: boolean;
 }) {
   const st = categoriaStyle(metrica.categoria);
   const hasLink = !!metrica.post?.link_publicado;
 
   const organicMetrics = [
-    { Icon: Heart,         label: "Curtidas",     value: metrica.curtidas,          color: "text-rose-500"    },
-    { Icon: MessageCircle, label: "Comentários",  value: metrica.comentarios,       color: "text-amber-500"   },
-    { Icon: Bookmark,      label: "Salvamentos",  value: metrica.salvamentos,       color: "text-blue-500"    },
-    { Icon: Share2,        label: "Compartilh.",  value: metrica.compartilhamentos, color: "text-green-500"   },
-    { Icon: UserPlus,      label: "Seguidores",   value: metrica.seguidores,        color: "text-purple-500"  },
-    { Icon: Eye,           label: "Vis. Perfil",  value: metrica.visitas_perfil,    color: "text-[#085ba7]"   },
+    { Icon: Heart,         label: "Curtidas",     value: metrica.curtidas,          color: "text-rose-500"   },
+    { Icon: MessageCircle, label: "Comentários",  value: metrica.comentarios,       color: "text-amber-500"  },
+    { Icon: Bookmark,      label: "Salvamentos",  value: metrica.salvamentos,       color: "text-blue-500"   },
+    { Icon: Share2,        label: "Compartilh.",  value: metrica.compartilhamentos, color: "text-green-500"  },
+    { Icon: UserPlus,      label: "Seguidores",   value: metrica.seguidores,        color: "text-purple-500" },
+    { Icon: Eye,           label: "Vis. Perfil",  value: metrica.visitas_perfil,    color: "text-[#085ba7]"  },
   ];
 
   return (
     <div className="bg-white rounded-2xl shadow-md border border-slate-200 overflow-hidden">
-      {/* status bar */}
       <div className={`h-1 w-full ${st.bar}`} />
 
       <div className="flex min-h-[180px]">
@@ -82,17 +83,11 @@ function MetricCard({
         <div className="w-44 flex-shrink-0 relative bg-slate-100 overflow-hidden">
           {ogImage ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={ogImage}
-              alt={metrica.post?.tema ?? ""}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
+            <img src={ogImage} alt={metrica.post?.tema ?? ""} className="absolute inset-0 w-full h-full object-cover" />
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-gradient-to-br from-[#085ba7] to-[#108bd1] p-3">
               <TrendingUp className="w-8 h-8 text-white/50" />
-              <p className="text-[9px] text-white/70 text-center leading-tight line-clamp-4">
-                {metrica.post?.tema}
-              </p>
+              <p className="text-[9px] text-white/70 text-center leading-tight line-clamp-4">{metrica.post?.tema}</p>
             </div>
           )}
         </div>
@@ -103,24 +98,18 @@ function MetricCard({
           {/* Header */}
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-slate-900 leading-snug truncate">
-                {metrica.post?.tema ?? "Post sem tema"}
-              </h3>
+              <h3 className="font-bold text-slate-900 leading-snug truncate">{metrica.post?.tema ?? "Post sem tema"}</h3>
               <p className="text-xs text-slate-400 mt-0.5">
                 Coleta: {new Date(metrica.data_coleta).toLocaleDateString("pt-BR")}
                 {metrica.post?.data_publicacao &&
                   ` • Post: ${new Date(metrica.post.data_publicacao).toLocaleDateString("pt-BR")}`}
               </p>
             </div>
-
-            {/* Score badge */}
             <div className="flex items-center gap-2 flex-shrink-0">
               <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${st.badge}`}>
                 {metrica.categoria || "—"}
               </span>
-              <span className="text-2xl font-black text-[#ff901c] leading-none">
-                {Math.round(metrica.score)}
-              </span>
+              <span className="text-2xl font-black text-[#ff901c] leading-none">{Math.round(metrica.score)}</span>
             </div>
           </div>
 
@@ -129,40 +118,15 @@ function MetricCard({
             {organicMetrics.map(({ Icon, label, value, color }) => (
               <div key={label} className="text-center">
                 <Icon className={`w-4 h-4 mx-auto mb-1 ${color}`} />
-                <div className="text-base font-bold text-slate-800 leading-none">
-                  {value.toLocaleString("pt-BR")}
-                </div>
+                <div className="text-base font-bold text-slate-800 leading-none">{value.toLocaleString("pt-BR")}</div>
                 <div className="text-[10px] text-slate-500 mt-0.5 leading-tight">{label}</div>
               </div>
             ))}
           </div>
 
-          {/* Paid metrics (optional) */}
-          {metrica.investimento ? (
-            <div className="pt-2 border-t border-slate-100 grid grid-cols-4 gap-2 text-center">
-              <div>
-                <div className="text-sm font-bold text-green-600">R$ {metrica.investimento.toFixed(2)}</div>
-                <div className="text-[10px] text-slate-500">Investimento</div>
-              </div>
-              <div>
-                <div className="text-sm font-bold text-blue-600">{metrica.publico?.toLocaleString("pt-BR") ?? "—"}</div>
-                <div className="text-[10px] text-slate-500">Público</div>
-              </div>
-              <div>
-                <div className="text-sm font-bold text-purple-600">{metrica.ganho_seguidores_impulsionamento ?? "—"}</div>
-                <div className="text-[10px] text-slate-500">Seg. (Pago)</div>
-              </div>
-              <div>
-                <div className="text-sm font-bold text-[#ff901c]">
-                  {metrica.custo_por_seguidor ? `R$ ${metrica.custo_por_seguidor.toFixed(2)}` : "—"}
-                </div>
-                <div className="text-[10px] text-slate-500">Custo/Seg.</div>
-              </div>
-            </div>
-          ) : null}
-
           {/* Actions */}
-          <div className="flex items-center justify-between mt-auto pt-1">
+          <div className="flex items-center gap-2 mt-auto pt-1">
+            {/* N8N update */}
             <button
               onClick={() => onUpdate(metrica.id, metrica.post?.link_publicado)}
               disabled={!hasLink || updating}
@@ -174,13 +138,24 @@ function MetricCard({
               {updating ? "Atualizando..." : "Atualizar"}
             </button>
 
-            {!hasLink && (
-              <span className="text-[10px] text-slate-400 italic">sem link publicado</span>
-            )}
+            {!hasLink && <span className="text-[10px] text-slate-400 italic">sem link publicado</span>}
 
+            <div className="flex-1" />
+
+            {/* Edit */}
+            <button
+              onClick={() => onEdit(metrica)}
+              className="p-1.5 text-slate-400 hover:text-[#085ba7] hover:bg-blue-50 rounded-lg transition-colors"
+              title="Editar"
+            >
+              <Pencil className="w-4 h-4" />
+            </button>
+
+            {/* Delete */}
             <button
               onClick={() => onDelete(metrica.id)}
               className="p-1.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Excluir"
             >
               <Trash2 className="w-4 h-4" />
             </button>
@@ -191,32 +166,46 @@ function MetricCard({
   );
 }
 
+// ── Shared metric fields used in both Create and Edit modals ─────────────────
+const METRIC_FIELDS = [
+  { key: "curtidas",         label: "Curtidas"          },
+  { key: "comentarios",      label: "Comentários"       },
+  { key: "salvamentos",      label: "Salvamentos"       },
+  { key: "compartilhamentos",label: "Compartilhamentos" },
+  { key: "seguidores",       label: "Novos Seguidores"  },
+  { key: "visitas_perfil",   label: "Visitas no Perfil" },
+] as const;
+
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function IndicadoresPage() {
-  const [loading, setLoading]   = useState(true);
-  const [metricas, setMetricas] = useState<Metrica[]>([]);
-  const [posts, setPosts]       = useState<Post[]>([]);
-  const [showForm, setShowForm] = useState(false);
-  const [ogImages, setOgImages] = useState<Record<string, string | null>>({});
+  const [loading, setLoading]       = useState(true);
+  const [metricas, setMetricas]     = useState<Metrica[]>([]);
+  const [posts, setPosts]           = useState<Post[]>([]);
+  const [showForm, setShowForm]     = useState(false);
+  const [editingMetrica, setEditingMetrica] = useState<Metrica | null>(null);
+  const [ogImages, setOgImages]     = useState<Record<string, string | null>>({});
   const [updatingIds, setUpdatingIds] = useState<Set<string>>(new Set());
 
-  const [formData, setFormData] = useState({
-    post_id: "",
+  // ── Create form: only post + date ─────────────────────────────────────────
+  const [createForm, setCreateForm] = useState({
+    post_id:    "",
     data_coleta: new Date().toISOString().split("T")[0],
-    curtidas: 0,
-    comentarios: 0,
-    salvamentos: 0,
+  });
+
+  // ── Edit form: post, date + all metric values ─────────────────────────────
+  const [editForm, setEditForm] = useState({
+    post_id:           "",
+    data_coleta:       "",
+    curtidas:          0,
+    comentarios:       0,
+    salvamentos:       0,
     compartilhamentos: 0,
-    seguidores: 0,
-    visitas_perfil: 0,
-    investimento: 0,
-    publico: 0,
-    ganho_seguidores_impulsionamento: 0,
+    seguidores:        0,
+    visitas_perfil:    0,
   });
 
   useEffect(() => { loadData(); }, []);
 
-  // Fetch OG images for cards that have a published link
   useEffect(() => {
     metricas.forEach(async (m) => {
       if (!m.post?.link_publicado || m.id in ogImages) return;
@@ -255,7 +244,7 @@ export default function IndicadoresPage() {
     setLoading(false);
   }
 
-  // ── N8N webhook update ────────────────────────────────────────────────────
+  // ── N8N webhook ───────────────────────────────────────────────────────────
   async function handleUpdateViaWebhook(metricaId: string, postLink: string | null | undefined) {
     if (!postLink) return;
     setUpdatingIds(prev => new Set(prev).add(metricaId));
@@ -266,20 +255,17 @@ export default function IndicadoresPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: postLink }),
       });
-
       if (!res.ok) throw new Error(`Webhook retornou ${res.status}`);
-
       const data = await res.json();
 
-      // Normalize common field name variations the webhook might return
       const update = {
-        data_coleta: new Date().toISOString().split("T")[0],
-        curtidas:          data.curtidas          ?? data.likes             ?? data.like_count        ?? 0,
-        comentarios:       data.comentarios       ?? data.comments          ?? data.comments_count    ?? 0,
-        salvamentos:       data.salvamentos       ?? data.saves             ?? data.saved             ?? 0,
-        compartilhamentos: data.compartilhamentos ?? data.shares            ?? data.share_count       ?? 0,
-        seguidores:        data.seguidores        ?? data.followers_gained  ?? data.new_followers     ?? 0,
-        visitas_perfil:    data.visitas_perfil    ?? data.profile_visits    ?? data.profile_views     ?? 0,
+        data_coleta:       new Date().toISOString().split("T")[0],
+        curtidas:          data.curtidas          ?? data.likes            ?? data.like_count     ?? 0,
+        comentarios:       data.comentarios       ?? data.comments         ?? data.comments_count ?? 0,
+        salvamentos:       data.salvamentos       ?? data.saves            ?? data.saved          ?? 0,
+        compartilhamentos: data.compartilhamentos ?? data.shares           ?? data.share_count    ?? 0,
+        seguidores:        data.seguidores        ?? data.followers_gained ?? data.new_followers  ?? 0,
+        visitas_perfil:    data.visitas_perfil    ?? data.profile_visits   ?? data.profile_views  ?? 0,
       };
 
       await supabase.from("metricas_posts").update(update).eq("id", metricaId);
@@ -292,40 +278,67 @@ export default function IndicadoresPage() {
     }
   }
 
-  // ── Form submit (manual input) ────────────────────────────────────────────
-  async function handleSubmit(e: React.FormEvent) {
+  // ── Create (only registers the record; metrics come via N8N) ─────────────
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-
-    const custo = formData.investimento && formData.ganho_seguidores_impulsionamento > 0
-      ? formData.investimento / formData.ganho_seguidores_impulsionamento
-      : null;
-
     const { error } = await supabase.from("metricas_posts").insert({
-      ...formData,
-      investimento: formData.investimento || null,
-      publico: formData.publico || null,
-      ganho_seguidores_impulsionamento: formData.ganho_seguidores_impulsionamento || null,
-      custo_por_seguidor: custo,
+      post_id:           createForm.post_id,
+      data_coleta:       createForm.data_coleta,
+      curtidas:          0,
+      comentarios:       0,
+      salvamentos:       0,
+      compartilhamentos: 0,
+      seguidores:        0,
+      visitas_perfil:    0,
     });
-
-    if (!error) { await loadData(); setShowForm(false); resetForm(); }
+    if (!error) {
+      await loadData();
+      setShowForm(false);
+      setCreateForm({ post_id: "", data_coleta: new Date().toISOString().split("T")[0] });
+    }
   }
 
+  // ── Edit ──────────────────────────────────────────────────────────────────
+  function openEdit(metrica: Metrica) {
+    setEditForm({
+      post_id:           metrica.post_id,
+      data_coleta:       metrica.data_coleta,
+      curtidas:          metrica.curtidas,
+      comentarios:       metrica.comentarios,
+      salvamentos:       metrica.salvamentos,
+      compartilhamentos: metrica.compartilhamentos,
+      seguidores:        metrica.seguidores,
+      visitas_perfil:    metrica.visitas_perfil,
+    });
+    setEditingMetrica(metrica);
+  }
+
+  async function handleEdit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingMetrica) return;
+    const { error } = await supabase
+      .from("metricas_posts")
+      .update({
+        post_id:           editForm.post_id,
+        data_coleta:       editForm.data_coleta,
+        curtidas:          editForm.curtidas,
+        comentarios:       editForm.comentarios,
+        salvamentos:       editForm.salvamentos,
+        compartilhamentos: editForm.compartilhamentos,
+        seguidores:        editForm.seguidores,
+        visitas_perfil:    editForm.visitas_perfil,
+      })
+      .eq("id", editingMetrica.id);
+
+    if (!error) { await loadData(); setEditingMetrica(null); }
+  }
+
+  // ── Delete ────────────────────────────────────────────────────────────────
   async function deleteMetrica(id: string) {
     if (confirm("Deseja excluir esta métrica?")) {
       await supabase.from("metricas_posts").delete().eq("id", id);
       loadData();
     }
-  }
-
-  function resetForm() {
-    setFormData({
-      post_id: posts[0]?.id || "",
-      data_coleta: new Date().toISOString().split("T")[0],
-      curtidas: 0, comentarios: 0, salvamentos: 0, compartilhamentos: 0,
-      seguidores: 0, visitas_perfil: 0, investimento: 0, publico: 0,
-      ganho_seguidores_impulsionamento: 0,
-    });
   }
 
   if (loading) {
@@ -367,99 +380,54 @@ export default function IndicadoresPage() {
 
       {/* ── Modal: Nova Métrica ── */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full my-8">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-900">Nova Métrica</h2>
+              <h2 className="text-xl font-bold text-slate-900">Nova Métrica</h2>
               <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-2">
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Selecione o Post</label>
-                  <select
-                    value={formData.post_id}
-                    onChange={(e) => setFormData({ ...formData, post_id: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  >
-                    <option value="">Escolha um post...</option>
-                    {posts.map((post) => (
-                      <option key={post.id} value={post.id}>
-                        {new Date(post.data_publicacao).toLocaleDateString("pt-BR")} — {post.tema}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Data da Coleta</label>
-                  <input
-                    type="date"
-                    value={formData.data_coleta}
-                    onChange={(e) => setFormData({ ...formData, data_coleta: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                  />
-                </div>
-              </div>
-
-              <div className="border border-slate-200 rounded-lg p-4 space-y-4">
-                <h3 className="font-semibold text-slate-900">Métricas Orgânicas</h3>
-                <div className="grid grid-cols-3 gap-4">
-                  {[
-                    { key: "curtidas",          label: "Curtidas"              },
-                    { key: "comentarios",        label: "Comentários"           },
-                    { key: "salvamentos",        label: "Salvamentos"           },
-                    { key: "compartilhamentos",  label: "Compartilhamentos"     },
-                    { key: "seguidores",         label: "Novos Seguidores"      },
-                    { key: "visitas_perfil",     label: "Visitas no Perfil"     },
-                  ].map(({ key, label }) => (
-                    <div key={key}>
-                      <label className="block text-sm text-slate-700 mb-1">{label}</label>
-                      <input
-                        type="number" min="0"
-                        value={(formData as Record<string, number | string>)[key] as number}
-                        onChange={(e) => setFormData({ ...formData, [key]: parseInt(e.target.value) || 0 })}
-                        className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
-                      />
-                    </div>
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Post</label>
+                <select
+                  value={createForm.post_id}
+                  onChange={(e) => setCreateForm({ ...createForm, post_id: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                >
+                  <option value="">Escolha um post...</option>
+                  {posts.map((post) => (
+                    <option key={post.id} value={post.id}>
+                      {new Date(post.data_publicacao).toLocaleDateString("pt-BR")} — {post.tema}
+                    </option>
                   ))}
-                </div>
+                </select>
               </div>
 
-              <div className="border border-slate-200 rounded-lg p-4 space-y-4">
-                <h3 className="font-semibold text-slate-900">Tráfego Pago (Opcional)</h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm text-slate-700 mb-1">Investimento (R$)</label>
-                    <input type="number" min="0" step="0.01" value={formData.investimento}
-                      onChange={(e) => setFormData({ ...formData, investimento: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg" />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-slate-700 mb-1">Público Alcançado</label>
-                    <input type="number" min="0" value={formData.publico}
-                      onChange={(e) => setFormData({ ...formData, publico: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg" />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="block text-sm text-slate-700 mb-1">Ganho de Seguidores (Impulsionamento)</label>
-                    <input type="number" min="0" value={formData.ganho_seguidores_impulsionamento}
-                      onChange={(e) => setFormData({ ...formData, ganho_seguidores_impulsionamento: parseInt(e.target.value) || 0 })}
-                      className="w-full px-4 py-2 border border-slate-300 rounded-lg" />
-                  </div>
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Data da Coleta</label>
+                <input
+                  type="date"
+                  value={createForm.data_coleta}
+                  onChange={(e) => setCreateForm({ ...createForm, data_coleta: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-orange-500"
+                />
               </div>
 
-              <div className="flex space-x-4 pt-4">
+              <p className="text-xs text-slate-500 bg-slate-50 rounded-lg px-3 py-2">
+                As métricas serão preenchidas via botão <strong>Atualizar</strong> no card (N8N).
+              </p>
+
+              <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowForm(false)}
-                  className="flex-1 px-6 py-3 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
+                  className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
                   Cancelar
                 </button>
                 <button type="submit"
-                  className="flex-1 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg font-semibold">
-                  Salvar Métrica
+                  className="flex-1 px-4 py-2.5 bg-[#ff901c] text-white rounded-lg hover:shadow-lg font-semibold">
+                  Criar
                 </button>
               </div>
             </form>
@@ -467,7 +435,77 @@ export default function IndicadoresPage() {
         </div>
       )}
 
-      {/* ── Metric cards (horizontal) ── */}
+      {/* ── Modal: Editar Métrica ── */}
+      {editingMetrica && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full my-8">
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-slate-900">Editar Métrica</h2>
+              <button onClick={() => setEditingMetrica(null)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
+            </div>
+
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Post</label>
+                <select
+                  value={editForm.post_id}
+                  onChange={(e) => setEditForm({ ...editForm, post_id: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Escolha um post...</option>
+                  {posts.map((post) => (
+                    <option key={post.id} value={post.id}>
+                      {new Date(post.data_publicacao).toLocaleDateString("pt-BR")} — {post.tema}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Data da Coleta</label>
+                <input
+                  type="date"
+                  value={editForm.data_coleta}
+                  onChange={(e) => setEditForm({ ...editForm, data_coleta: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="border border-slate-200 rounded-lg p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-slate-700">Métricas</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {METRIC_FIELDS.map(({ key, label }) => (
+                    <div key={key}>
+                      <label className="block text-xs text-slate-600 mb-1">{label}</label>
+                      <input
+                        type="number" min="0"
+                        value={(editForm as Record<string, number | string>)[key] as number}
+                        onChange={(e) => setEditForm({ ...editForm, [key]: parseInt(e.target.value) || 0 })}
+                        className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setEditingMetrica(null)}
+                  className="flex-1 px-4 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50">
+                  Cancelar
+                </button>
+                <button type="submit"
+                  className="flex-1 px-4 py-2.5 bg-[#085ba7] text-white rounded-lg hover:shadow-lg font-semibold">
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Metric cards ── */}
       <div className="space-y-4">
         {metricas.map((metrica) => (
           <MetricCard
@@ -476,6 +514,7 @@ export default function IndicadoresPage() {
             ogImage={ogImages[metrica.id]}
             onDelete={deleteMetrica}
             onUpdate={handleUpdateViaWebhook}
+            onEdit={openEdit}
             updating={updatingIds.has(metrica.id)}
           />
         ))}
@@ -486,9 +525,7 @@ export default function IndicadoresPage() {
           <TrendingUp className="w-24 h-24 text-slate-300 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-slate-600 mb-2">Nenhuma métrica registrada</h3>
           <p className="text-slate-500 mb-6">
-            {posts.length === 0
-              ? "Publique posts no Feed primeiro"
-              : "Adicione métricas manualmente ou atualize via N8N"}
+            {posts.length === 0 ? "Publique posts no Feed primeiro" : "Adicione e atualize via N8N"}
           </p>
           {posts.length > 0 && (
             <button onClick={() => setShowForm(true)}

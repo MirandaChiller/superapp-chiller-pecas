@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import { Calendar, Plus, Trash2, Filter, RefreshCw, ExternalLink, CheckCircle, Play, ImageIcon, Layers } from "lucide-react";
 
+const N8N_WEBHOOK = "https://miranda.beontech.com.br/webhook-test/00f7843b-6743-4653-ab83-f2453c83518e";
+
 function extractInstagramShortcode(input: string): string | null {
   if (!input) return null;
   // Full embed code — extract from data-instgrm-permalink
@@ -267,16 +269,34 @@ export default function FeedPage() {
     e.preventDefault();
 
     if (editingId) {
+      const prevStatus = posts.find(p => p.id === editingId)?.status;
       const { error } = await supabase
         .from("posts_planejados")
         .update({ ...formData, link_publicado: formData.link_publicado || null })
         .eq("id", editingId);
-      if (!error) { await loadData(); setShowForm(false); setEditingId(null); resetForm(); }
+      if (!error) {
+        await loadData();
+        setShowForm(false);
+        setEditingId(null);
+        resetForm();
+        if (formData.status === "Publicado" && prevStatus !== "Publicado") {
+          await autoCreateMetric(editingId, formData.link_publicado || null);
+        }
+      }
     } else {
-      const { error } = await supabase
+      const { data: inserted, error } = await supabase
         .from("posts_planejados")
-        .insert({ ...formData, link_publicado: formData.link_publicado || null });
-      if (!error) { await loadData(); setShowForm(false); resetForm(); }
+        .insert({ ...formData, link_publicado: formData.link_publicado || null })
+        .select("id")
+        .single();
+      if (!error && inserted) {
+        await loadData();
+        setShowForm(false);
+        resetForm();
+        if (formData.status === "Publicado") {
+          await autoCreateMetric(inserted.id, formData.link_publicado || null);
+        }
+      }
     }
   }
 
@@ -285,6 +305,49 @@ export default function FeedPage() {
       await supabase.from("posts_planejados").delete().eq("id", id);
       loadData();
     }
+  }
+
+  // Auto-creates a metric entry when a post becomes "Publicado" and calls N8N
+  async function autoCreateMetric(postId: string, linkPublicado: string | null) {
+    // Skip if a metric record already exists for this post
+    const { data: existing } = await supabase
+      .from("metricas_posts")
+      .select("id")
+      .eq("post_id", postId)
+      .limit(1);
+    if (existing && existing.length > 0) return;
+
+    const today = new Date().toISOString().split("T")[0];
+    const { data: metrica, error } = await supabase
+      .from("metricas_posts")
+      .insert({
+        post_id: postId, data_coleta: today,
+        curtidas: 0, comentarios: 0, salvamentos: 0,
+        compartilhamentos: 0, seguidores: 0, visitas_perfil: 0,
+      })
+      .select("id")
+      .single();
+    if (error || !metrica) return;
+
+    if (!linkPublicado) return;
+    try {
+      const res = await fetch(N8N_WEBHOOK, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: linkPublicado }),
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      await supabase.from("metricas_posts").update({
+        data_coleta:       today,
+        curtidas:          data.curtidas          ?? data.likes            ?? data.like_count     ?? 0,
+        comentarios:       data.comentarios       ?? data.comments         ?? data.comments_count ?? 0,
+        salvamentos:       data.salvamentos       ?? data.saves            ?? data.saved          ?? 0,
+        compartilhamentos: data.compartilhamentos ?? data.shares           ?? data.share_count    ?? 0,
+        seguidores:        data.seguidores        ?? data.followers_gained ?? data.new_followers  ?? 0,
+        visitas_perfil:    data.visitas_perfil    ?? data.profile_visits   ?? data.profile_views  ?? 0,
+      }).eq("id", metrica.id);
+    } catch { /* silently ignored — metric exists, user can refresh manually */ }
   }
 
   function editPost(post: Post) {

@@ -47,6 +47,15 @@ const NIVEIS_PERFORMANCE_MAX = [
   "Locais", "Criativo", "ROAS", "CPA",
 ];
 
+const ML_CANAIS = ["ML Chiller", "ML Azuq"];
+
+const TIPOS_ML = ["Product Ads", "Brand Ads", "Display Ads"];
+
+const NIVEIS_ML = [
+  "Campanha", "Adição de produto", "Remoção de produto",
+  "Produto Pausado", "Orçamento", "ROAS", "Campanha Deletada",
+];
+
 const CANAIS = [
   "Google", "ML Chiller", "ML Azuq", "Shopee", "Magalu",
   "Amazon", "Bing", "Meta", "LinkedIn",
@@ -141,8 +150,9 @@ export default function CampaignEditsPage() {
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
-  // Reload whenever date range changes (applies filter at DB level)
-  useEffect(() => { loadEdits(); }, [filterDataDe, filterDataAte]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reload when date range or pendentes mode changes.
+  // When showing pendentes, date filter is bypassed so all pending records are visible.
+  useEffect(() => { loadEdits(); }, [filterDataDe, filterDataAte, showPendentes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Client-side filter for tipo / canal / pendentes
   useEffect(() => {
@@ -170,9 +180,12 @@ export default function CampaignEditsPage() {
       .select("*")
       .order("created_at", { ascending: false });
 
-    // DB-level date filter to avoid fetching all records
-    if (filterDataDe)  query = query.gte("data_alteracao", filterDataDe);
-    if (filterDataAte) query = query.lte("data_alteracao", filterDataAte);
+    // DB-level date filter — skipped when showing pendentes so all pending
+    // records appear regardless of their data_alteracao date
+    if (!showPendentes) {
+      if (filterDataDe)  query = query.gte("data_alteracao", filterDataDe);
+      if (filterDataAte) query = query.lte("data_alteracao", filterDataAte);
+    }
 
     const { data, error } = await query;
     if (!error && data) {
@@ -392,8 +405,11 @@ export default function CampaignEditsPage() {
     );
   }
 
-  const niveisDisponiveis = formData.tipo_campanha === "Pesquisa"
-    ? NIVEIS_PESQUISA : NIVEIS_PERFORMANCE_MAX;
+  const isMLCanal = ML_CANAIS.includes(formData.canal);
+  const tiposDisponiveis = isMLCanal ? TIPOS_ML : ["Pesquisa", "Performance Max"];
+  const niveisDisponiveis = isMLCanal
+    ? NIVEIS_ML
+    : formData.tipo_campanha === "Pesquisa" ? NIVEIS_PESQUISA : NIVEIS_PERFORMANCE_MAX;
 
   const pendentesCount = edits.filter(isPendente).length;
 
@@ -479,8 +495,8 @@ export default function CampaignEditsPage() {
               ))}
             </div>
             <div className="h-6 w-px bg-slate-300" />
-            <div className="flex gap-2">
-              {["Todos", "Pesquisa", "Performance Max"].map(tipo => (
+            <div className="flex gap-2 flex-wrap">
+              {["Todos", "Pesquisa", "Performance Max", "Product Ads", "Brand Ads", "Display Ads"].map(tipo => (
                 <button key={tipo} onClick={() => setFilterTipo(tipo)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                     filterTipo === tipo ? "bg-[#085ba7] text-white shadow-md" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -562,7 +578,19 @@ export default function CampaignEditsPage() {
               {/* 2. Canal */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Canal</label>
-                <select value={formData.canal} onChange={e => setFormData({ ...formData, canal: e.target.value })}
+                <select value={formData.canal}
+                  onChange={e => {
+                    const c = e.target.value;
+                    const toML = ML_CANAIS.includes(c);
+                    const wasML = ML_CANAIS.includes(formData.canal);
+                    setFormData({
+                      ...formData,
+                      canal: c,
+                      // Reset tipo/nível when switching between ML and non-ML
+                      tipo_campanha: toML ? TIPOS_ML[0] : (wasML ? "Pesquisa" : formData.tipo_campanha),
+                      nivel_edicao: (toML !== wasML) ? "" : formData.nivel_edicao,
+                    });
+                  }}
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] font-medium">
                   <option value="">Selecione o canal...</option>
                   {CANAIS.map(c => <option key={c} value={c}>{c}</option>)}
@@ -575,8 +603,7 @@ export default function CampaignEditsPage() {
                 <select value={formData.tipo_campanha} required
                   onChange={e => setFormData({ ...formData, tipo_campanha: e.target.value, nivel_edicao: "" })}
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] font-medium">
-                  <option value="Pesquisa">Pesquisa</option>
-                  <option value="Performance Max">Performance Max</option>
+                  {tiposDisponiveis.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
 

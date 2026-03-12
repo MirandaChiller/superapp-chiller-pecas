@@ -104,30 +104,26 @@ export default function MonthPage() {
                 }`}
               >
                 <div className="text-lg font-bold mb-1.5">{Number(day)}</div>
-                {posts.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {posts.slice(0, 3).map((p, i) => (
-                      <span
-                        key={i}
-                        className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none ${
-                          isToday
-                            ? STATUS_TAG_DARK[p.status] ?? "bg-blue-200 text-blue-900"
-                            : STATUS_TAG[p.status] ?? "bg-slate-200 text-slate-600"
-                        }`}
-                        title={p.tema}
-                      >
-                        {p.status}
-                      </span>
-                    ))}
-                    {posts.length > 3 && (
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none ${
-                        isToday ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
-                      }`}>
-                        +{posts.length - 3}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {posts.length > 0 && (() => {
+                  const counts: Record<string, number> = {};
+                  posts.forEach((p) => { counts[p.status] = (counts[p.status] ?? 0) + 1; });
+                  return (
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(counts).map(([status, count]) => (
+                        <span
+                          key={status}
+                          className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none ${
+                            isToday
+                              ? STATUS_TAG_DARK[status] ?? "bg-blue-200 text-blue-900"
+                              : STATUS_TAG[status] ?? "bg-slate-200 text-slate-600"
+                          }`}
+                        >
+                          {count} {status}
+                        </span>
+                      ))}
+                    </div>
+                  );
+                })()}
               </Link>
             );
           })}

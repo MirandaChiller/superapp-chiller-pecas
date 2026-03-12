@@ -19,6 +19,14 @@ const STATUS_COLOR: Record<string, string> = {
   Planejado:     "bg-slate-300",
 };
 
+// Cores para fundo azul escuro (dia de hoje)
+const STATUS_COLOR_DARK: Record<string, string> = {
+  Publicado:     "bg-green-400",
+  Aprovado:      "bg-white",
+  "Em Produção": "bg-amber-300",
+  Planejado:     "bg-blue-200",
+};
+
 export default function MonthPage() {
   const params = useParams();
   const year = Number(params.year);
@@ -101,9 +109,11 @@ export default function MonthPage() {
                       <div
                         key={i}
                         className={`h-1.5 rounded-full ${
-                          isToday ? "bg-white/50" : STATUS_COLOR[p.status] ?? "bg-slate-300"
+                          isToday
+                            ? STATUS_COLOR_DARK[p.status] ?? "bg-blue-200"
+                            : STATUS_COLOR[p.status] ?? "bg-slate-300"
                         }`}
-                        title={p.tema}
+                        title={`${p.status} — ${p.tema}`}
                       />
                     ))}
                     {posts.length > 3 && (

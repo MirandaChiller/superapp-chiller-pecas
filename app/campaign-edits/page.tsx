@@ -120,6 +120,8 @@ export default function CampaignEditsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  // Separate count that ignores date filter so the alert always reflects reality
+  const [globalPendentesCount, setGlobalPendentesCount] = useState(0);
 
   const [filterTipo, setFilterTipo] = useState("Todos");
   const [filterCanal, setFilterCanal] = useState("Todos");
@@ -150,6 +152,9 @@ export default function CampaignEditsPage() {
 
   // ── Load ────────────────────────────────────────────────────────────────────
 
+  // Always keep the global pending count fresh (independent of date filter)
+  useEffect(() => { loadPendentesCount(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Reload when date range or pendentes mode changes.
   // When showing pendentes, date filter is bypassed so all pending records are visible.
   useEffect(() => { loadEdits(); }, [filterDataDe, filterDataAte, showPendentes]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -172,6 +177,16 @@ export default function CampaignEditsPage() {
     if (found) { openEdit(found); }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edits]);
+
+  async function loadPendentesCount() {
+    const { count } = await supabase
+      .from("campaign_edits")
+      .select("*", { count: "exact", head: true })
+      .not("data_revisao", "is", null)
+      .is("data_revisao_concluida", null)
+      .lte("data_revisao", today());
+    setGlobalPendentesCount(count ?? 0);
+  }
 
   async function loadEdits() {
     setLoading(true);
@@ -303,10 +318,10 @@ export default function CampaignEditsPage() {
 
       if (editingId) {
         const { error } = await supabase.from("campaign_edits").update(payload).eq("id", editingId);
-        if (!error) { await loadEdits(); closeForm(); }
+        if (!error) { await loadEdits(); loadPendentesCount(); closeForm(); }
       } else {
         const { error } = await supabase.from("campaign_edits").insert(payload);
-        if (!error) { await loadEdits(); closeForm(); }
+        if (!error) { await loadEdits(); loadPendentesCount(); closeForm(); }
       }
     } catch (err) {
       console.error("Erro ao salvar:", err);
@@ -322,13 +337,13 @@ export default function CampaignEditsPage() {
       .from("campaign_edits")
       .update({ data_revisao_concluida: today() })
       .eq("id", id);
-    if (!error) loadEdits();
+    if (!error) { loadEdits(); loadPendentesCount(); }
   }
 
   async function deleteEdit(id: string) {
     if (!confirm("Tem certeza que deseja excluir esta edição?")) return;
     const { error } = await supabase.from("campaign_edits").delete().eq("id", id);
-    if (!error) loadEdits();
+    if (!error) { loadEdits(); loadPendentesCount(); }
   }
 
   function toggleCard(id: string) {
@@ -411,6 +426,7 @@ export default function CampaignEditsPage() {
     ? NIVEIS_ML
     : formData.tipo_campanha === "Pesquisa" ? NIVEIS_PESQUISA : NIVEIS_PERFORMANCE_MAX;
 
+  // Local count (within loaded date range) — used only for filter label
   const pendentesCount = edits.filter(isPendente).length;
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -447,15 +463,15 @@ export default function CampaignEditsPage() {
         </div>
       </div>
 
-      {/* Pendentes alert */}
-      {pendentesCount > 0 && !showPendentes && (
+      {/* Pendentes alert — uses globalPendentesCount so it shows regardless of date filter */}
+      {globalPendentesCount > 0 && !showPendentes && (
         <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-lg">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <AlertCircle className="w-6 h-6 text-red-600" />
               <div>
                 <h3 className="font-bold text-red-900">
-                  {pendentesCount} edição{pendentesCount !== 1 ? "ões" : ""} pendente{pendentesCount !== 1 ? "s" : ""} de revisão
+                  {globalPendentesCount} edição{globalPendentesCount !== 1 ? "ões" : ""} pendente{globalPendentesCount !== 1 ? "s" : ""} de revisão
                 </h3>
                 <p className="text-sm text-red-700">Existem campanhas aguardando revisão</p>
               </div>
@@ -486,9 +502,9 @@ export default function CampaignEditsPage() {
                 >
                   {pend && <AlertCircle className="w-4 h-4" />}
                   {pend ? "Pendentes" : "Todas"}
-                  {pend && pendentesCount > 0 && (
+                  {pend && globalPendentesCount > 0 && (
                     <span className="bg-white text-red-600 px-2 py-0.5 rounded-full text-xs font-bold">
-                      {pendentesCount}
+                      {globalPendentesCount}
                     </span>
                   )}
                 </button>

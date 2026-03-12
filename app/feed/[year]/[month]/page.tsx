@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
-import { ChevronLeft, Plus } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useParams } from "next/navigation";
 
 const MESES = [
@@ -12,19 +12,20 @@ const MESES = [
   "Setembro", "Outubro", "Novembro", "Dezembro",
 ];
 
-const STATUS_COLOR: Record<string, string> = {
-  Publicado:     "bg-green-500",
-  Aprovado:      "bg-[#085ba7]",
-  "Em Produção": "bg-amber-400",
-  Planejado:     "bg-slate-300",
+// Tag styles for light background cells
+const STATUS_TAG: Record<string, string> = {
+  Publicado:     "bg-green-500 text-white",
+  Aprovado:      "bg-[#085ba7] text-white",
+  "Em Produção": "bg-amber-400 text-white",
+  Planejado:     "bg-slate-200 text-slate-600",
 };
 
-// Cores para fundo azul escuro (dia de hoje)
-const STATUS_COLOR_DARK: Record<string, string> = {
-  Publicado:     "bg-green-400",
-  Aprovado:      "bg-white",
-  "Em Produção": "bg-amber-300",
-  Planejado:     "bg-blue-200",
+// Tag styles for dark (today) background
+const STATUS_TAG_DARK: Record<string, string> = {
+  Publicado:     "bg-green-400 text-white",
+  Aprovado:      "bg-white text-[#085ba7]",
+  "Em Produção": "bg-amber-300 text-amber-900",
+  Planejado:     "bg-blue-200 text-blue-900",
 };
 
 export default function MonthPage() {
@@ -102,32 +103,29 @@ export default function MonthPage() {
                     : "border-slate-200 bg-white text-slate-400 hover:border-slate-300"
                 }`}
               >
-                <div className="text-lg font-bold mb-2">{Number(day)}</div>
+                <div className="text-lg font-bold mb-1.5">{Number(day)}</div>
                 {posts.length > 0 && (
-                  <div className="space-y-1">
+                  <div className="flex flex-wrap gap-1">
                     {posts.slice(0, 3).map((p, i) => (
-                      <div
+                      <span
                         key={i}
-                        className={`h-1.5 rounded-full ${
+                        className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none ${
                           isToday
-                            ? STATUS_COLOR_DARK[p.status] ?? "bg-blue-200"
-                            : STATUS_COLOR[p.status] ?? "bg-slate-300"
+                            ? STATUS_TAG_DARK[p.status] ?? "bg-blue-200 text-blue-900"
+                            : STATUS_TAG[p.status] ?? "bg-slate-200 text-slate-600"
                         }`}
-                        title={`${p.status} — ${p.tema}`}
-                      />
+                        title={p.tema}
+                      >
+                        {p.status}
+                      </span>
                     ))}
                     {posts.length > 3 && (
-                      <p className={`text-[10px] font-medium ${isToday ? "text-white/70" : "text-slate-400"}`}>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold leading-none ${
+                        isToday ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                      }`}>
                         +{posts.length - 3}
-                      </p>
+                      </span>
                     )}
-                  </div>
-                )}
-                {posts.length === 0 && (
-                  <div className={`flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity ${
-                    isToday ? "text-white/40" : "text-slate-300"
-                  }`}>
-                    <Plus className="w-3 h-3" />
                   </div>
                 )}
               </Link>
@@ -138,10 +136,9 @@ export default function MonthPage() {
 
       {/* Legend */}
       <div className="flex flex-wrap gap-4 pt-2 border-t border-slate-200">
-        {Object.entries(STATUS_COLOR).map(([status, color]) => (
+        {Object.entries(STATUS_TAG).map(([status, cls]) => (
           <div key={status} className="flex items-center space-x-2">
-            <div className={`w-3 h-3 rounded-full ${color}`} />
-            <span className="text-xs text-slate-500">{status}</span>
+            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold ${cls}`}>{status}</span>
           </div>
         ))}
       </div>

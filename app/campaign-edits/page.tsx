@@ -568,8 +568,9 @@ export default function CampaignEditsPage() {
 
       {/* ── Form modal ──────────────────────────────────────────────────────── */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto relative my-8">
+        <div className="fixed inset-0 bg-black/50 overflow-y-auto z-50">
+          <div className="flex min-h-full items-center justify-center p-6">
+          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full relative overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-slate-900">
                 {editingId ? "Editar Registro" : "Registrar Nova Edição"}
@@ -780,6 +781,7 @@ export default function CampaignEditsPage() {
                 </button>
               </div>
             </form>
+          </div>
           </div>
         </div>
       )}

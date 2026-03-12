@@ -40,7 +40,9 @@ export function Navigation() {
           
           <div className="hidden md:flex items-center space-x-1">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = item.href === "/"
+                ? pathname === "/"
+                : pathname === item.href || pathname.startsWith(item.href + "/");
               const Icon = item.icon;
               
               return (

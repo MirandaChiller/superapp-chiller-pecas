@@ -437,8 +437,9 @@ export default function IndicadoresPage() {
 
       {/* ── Modal: Editar Métrica ── */}
       {editingMetrica && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-8 max-w-lg w-full my-8">
+        <div className="fixed inset-0 bg-black/50 overflow-y-auto z-50">
+          <div className="flex min-h-full items-center justify-center p-6">
+          <div className="bg-white rounded-2xl p-8 max-w-lg w-full">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-slate-900">Editar Métrica</h2>
               <button onClick={() => setEditingMetrica(null)} className="text-slate-400 hover:text-slate-600 text-xl">✕</button>
@@ -501,6 +502,7 @@ export default function IndicadoresPage() {
                 </button>
               </div>
             </form>
+          </div>
           </div>
         </div>
       )}

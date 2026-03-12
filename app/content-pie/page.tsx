@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, Trash2, Save, X, CalendarDays } from "lucide-react";
+import { Plus, Trash2, Save, X, CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 
 interface Tema {
   nome: string;
@@ -223,9 +223,26 @@ export default function ContentPiePage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-slate-900">Temas & Intensidades</h1>
-        <p className="text-slate-600 mt-1">Planejamento mensal independente — clique em um mês para editar</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-slate-900">Temas & Intensidades</h1>
+          <p className="text-slate-600 mt-1">Planejamento mensal — clique em um mês para editar</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setAnoAtivo((a) => a - 1)}
+            className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <span className="text-xl font-bold text-slate-700 w-16 text-center">{anoAtivo}</span>
+          <button
+            onClick={() => setAnoAtivo((a) => a + 1)}
+            className="p-2 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       {/* DB Error */}
@@ -253,97 +270,64 @@ export default function ContentPiePage() {
         </div>
       )}
 
-      {/* Year tabs */}
-      <div className="flex items-center gap-2 flex-wrap">
-        {anos.map((ano) => (
-          <div key={ano} className="flex items-center">
-            <button
-              onClick={() => setAnoAtivo(ano)}
-              className={`px-5 py-2 rounded-l-lg font-semibold text-sm transition-all ${
-                anoAtivo === ano
-                  ? "bg-[#085ba7] text-white shadow-md"
-                  : "bg-white border border-slate-300 text-slate-600 hover:bg-slate-50"
-              }`}
-            >
-              {ano}
-            </button>
-            {anos.length > 1 && (
-              <button
-                onClick={() => removeAno(ano)}
-                title="Remover ano"
-                className={`px-2 py-2 rounded-r-lg text-sm transition-all border-l border-white/30 ${
-                  anoAtivo === ano
-                    ? "bg-[#085ba7] text-white/70 hover:text-white"
-                    : "bg-white border border-slate-300 border-l-0 text-slate-400 hover:bg-red-50 hover:text-red-500"
-                }`}
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-        ))}
-
-        <div className="flex items-center gap-1">
-          <input
-            type="number"
-            placeholder="Ano"
-            value={novoAnoInput}
-            onChange={(e) => setNovoAnoInput(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && addAno()}
-            className="w-24 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-[#085ba7] text-center"
-          />
-          <button
-            onClick={addAno}
-            title="Adicionar ano"
-            className="p-2 bg-[#ff901c] text-white rounded-lg hover:bg-[#e08016] transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* 3 × 4 grid */}
-      <div className="grid grid-cols-3 gap-4">
+      {/* 4 × 3 grid — same layout as Feed months */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
         {MESES.map((nomeMes, idx) => {
           const mes = idx + 1;
           const key = `${anoAtivo}-${mes}`;
           const mesData = planejamento[key];
           const hasContent = !!mesData;
           const style = INTENSIDADE_STYLE[hasContent ? mesData.intensidade : "Normal"];
-          const postsMes = hasContent ? calcPostsMes(mesData) : "—";
+          const postsMes = hasContent ? calcPostsMes(mesData) : null;
           const topTemas = hasContent
-            ? mesData.temas.slice(0, 2).map((t) => t.nome).filter(Boolean).join(" · ")
-            : "";
+            ? mesData.temas.slice(0, 2).map((t) => t.nome).filter(Boolean)
+            : [];
+          const isCurrentMonth = mes === new Date().getMonth() + 1 && anoAtivo === new Date().getFullYear();
 
           return (
             <button
               key={mes}
               onClick={() => setDialogMes(mes)}
-              className="group bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md hover:border-[#085ba7] transition-all text-left overflow-hidden"
+              className={`group p-6 rounded-2xl border-2 transition-all hover:shadow-lg hover:-translate-y-0.5 text-left w-full ${
+                isCurrentMonth
+                  ? "border-[#085ba7] bg-[#085ba7] text-white"
+                  : "border-slate-200 bg-white text-slate-700 hover:border-[#085ba7]"
+              }`}
             >
-              {/* Card header */}
-              <div className="bg-[#085ba7] px-4 py-3 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-white font-bold">{nomeMes}</span>
-                  <span className="text-blue-200 text-xs">{anoAtivo}</span>
-                </div>
-                <CalendarDays className="w-4 h-4 text-blue-200 group-hover:text-white transition-colors" />
+              <div className="flex items-center space-x-3 mb-4">
+                <CalendarDays className={`w-6 h-6 flex-shrink-0 ${isCurrentMonth ? "text-white/70" : "text-[#085ba7]"}`} />
+                <span className="font-bold text-lg">{nomeMes}</span>
               </div>
 
-              {/* Card body */}
-              <div className="px-4 py-3 space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${style.bg} ${style.text} ${style.border}`}>
+              <div className="space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${
+                    isCurrentMonth
+                      ? "bg-white/20 text-white border-white/30"
+                      : `${style.bg} ${style.text} ${style.border}`
+                  }`}>
                     {hasContent ? mesData.intensidade : "Normal"}
                   </span>
-                  <span className="text-xs text-slate-400 font-medium">
-                    {postsMes} {hasContent ? "posts/mês" : ""}
-                  </span>
+                  {postsMes !== null && (
+                    <span className={`text-xs font-medium ${isCurrentMonth ? "text-white/70" : "text-slate-400"}`}>
+                      {postsMes} posts/mês
+                    </span>
+                  )}
                 </div>
-                {topTemas ? (
-                  <p className="text-xs text-slate-500 truncate">{topTemas}</p>
+                {topTemas.length > 0 ? (
+                  <div className="flex flex-wrap gap-1">
+                    {topTemas.map((t, i) => (
+                      <span key={i} className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                        isCurrentMonth ? "bg-white/20 text-white" : "bg-slate-100 text-slate-500"
+                      }`}>
+                        {t}
+                      </span>
+                    ))}
+                  </div>
                 ) : (
-                  <p className="text-xs text-slate-300 italic">Clique para planejar</p>
+                  <p className={`text-xs italic ${isCurrentMonth ? "text-white/50" : "text-slate-300"}`}>
+                    Clique para planejar
+                  </p>
                 )}
               </div>
             </button>

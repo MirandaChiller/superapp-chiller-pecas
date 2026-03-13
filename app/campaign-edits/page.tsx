@@ -120,6 +120,7 @@ export default function CampaignEditsPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   // Separate count that ignores date filter so the alert always reflects reality
   const [globalPendentesCount, setGlobalPendentesCount] = useState(0);
 
@@ -215,6 +216,7 @@ export default function CampaignEditsPage() {
     setShowForm(false);
     setFormData(emptyForm());
     setEditingId(null);
+    setSaveError(null);
     window.history.pushState({}, "", "/campaign-edits");
   }
 
@@ -302,6 +304,7 @@ export default function CampaignEditsPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
+    setSaveError(null);
     try {
       const payload = {
         nome_campanha:       formData.nome_campanha,
@@ -318,12 +321,13 @@ export default function CampaignEditsPage() {
 
       if (editingId) {
         const { error } = await supabase.from("campaign_edits").update(payload).eq("id", editingId);
-        if (!error) { await loadEdits(); loadPendentesCount(); closeForm(); }
+        if (error) { setSaveError(error.message); } else { await loadEdits(); loadPendentesCount(); closeForm(); }
       } else {
         const { error } = await supabase.from("campaign_edits").insert(payload);
-        if (!error) { await loadEdits(); loadPendentesCount(); closeForm(); }
+        if (error) { setSaveError(error.message); } else { await loadEdits(); loadPendentesCount(); closeForm(); }
       }
     } catch (err) {
+      setSaveError("Erro inesperado ao salvar.");
       console.error("Erro ao salvar:", err);
     } finally {
       setSaving(false);
@@ -764,6 +768,13 @@ export default function CampaignEditsPage() {
                   ))}
                 </div>
               </div>
+
+              {/* Save error */}
+              {saveError && (
+                <div className="p-3 bg-red-50 border border-red-300 rounded-lg text-sm text-red-700 font-medium">
+                  Erro ao salvar: {saveError}
+                </div>
+              )}
 
               {/* Actions */}
               <div className="flex space-x-4 pt-4">

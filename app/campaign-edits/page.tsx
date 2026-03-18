@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   Plus, Save, X, Upload, Calendar, FileText, Target,
-  ChevronDown, ChevronUp, Edit, Trash2, ZoomIn,
-  CheckCircle, AlertCircle, Copy, Check, Download,
+  Edit, Trash2, ZoomIn,
+  CheckCircle, AlertCircle, Copy, Check, Download, Eye, Filter,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -126,12 +126,15 @@ export default function CampaignEditsPage() {
 
   const [filterTipo, setFilterTipo] = useState("Todos");
   const [filterCanal, setFilterCanal] = useState("Todos");
-  // Default: today only — avoids loading the entire history on open
+  // Confirmed filter dates (only applied when user clicks Filtrar)
   const [filterDataDe, setFilterDataDe] = useState(today());
   const [filterDataAte, setFilterDataAte] = useState(today());
+  // Pending dates shown in the inputs — not yet applied to the query
+  const [pendingDataDe, setPendingDataDe] = useState(today());
+  const [pendingDataAte, setPendingDataAte] = useState(today());
 
   const [showPendentes, setShowPendentes] = useState(false);
-  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [viewingEdit, setViewingEdit] = useState<CampaignEdit | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -156,9 +159,8 @@ export default function CampaignEditsPage() {
   // Always keep the global pending count fresh (independent of date filter)
   useEffect(() => { loadPendentesCount(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Reload when date range or pendentes mode changes.
-  // When showing pendentes, date filter is bypassed so all pending records are visible.
-  useEffect(() => { loadEdits(); }, [filterDataDe, filterDataAte, showPendentes]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Reload when pendentes mode changes. Date filter requires the Filtrar button.
+  useEffect(() => { loadEdits(); }, [showPendentes]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Client-side filter for tipo / canal / pendentes
   useEffect(() => {
@@ -189,8 +191,11 @@ export default function CampaignEditsPage() {
     setGlobalPendentesCount(count ?? 0);
   }
 
-  async function loadEdits() {
+  async function loadEdits(overrideDe?: string, overrideAte?: string) {
     setLoading(true);
+    const de = overrideDe !== undefined ? overrideDe : filterDataDe;
+    const ate = overrideAte !== undefined ? overrideAte : filterDataAte;
+
     let query = supabase
       .from("campaign_edits")
       .select("*")
@@ -199,8 +204,8 @@ export default function CampaignEditsPage() {
     // DB-level date filter — skipped when showing pendentes so all pending
     // records appear regardless of their data_alteracao date
     if (!showPendentes) {
-      if (filterDataDe)  query = query.gte("data_alteracao", filterDataDe);
-      if (filterDataAte) query = query.lte("data_alteracao", filterDataAte);
+      if (de)  query = query.gte("data_alteracao", de);
+      if (ate) query = query.lte("data_alteracao", ate);
     }
 
     const { data, error } = await query;
@@ -208,6 +213,12 @@ export default function CampaignEditsPage() {
       setEdits(data.map(d => ({ ...d, revisoes: d.revisoes ?? [] })));
     }
     setLoading(false);
+  }
+
+  async function applyDateFilter() {
+    setFilterDataDe(pendingDataDe);
+    setFilterDataAte(pendingDataAte);
+    await loadEdits(pendingDataDe, pendingDataAte);
   }
 
   // ── Form helpers ─────────────────────────────────────────────────────────────
@@ -350,14 +361,6 @@ export default function CampaignEditsPage() {
     if (!error) { loadEdits(); loadPendentesCount(); }
   }
 
-  function toggleCard(id: string) {
-    setExpandedCards(prev => {
-      const s = new Set(prev);
-      s.has(id) ? s.delete(id) : s.add(id);
-      return s;
-    });
-  }
-
   function copiarConteudo(edit: CampaignEdit) {
     const fmt = (d: string) => d ? new Date(d).toLocaleDateString("pt-BR") : "";
     const revisoesTxt = edit.revisoes?.length
@@ -411,6 +414,127 @@ export default function CampaignEditsPage() {
     URL.revokeObjectURL(url);
   }
 
+  async function exportarExcel() {
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = "Chiller Peças";
+      workbook.created = new Date();
+
+      // ── Main data sheet ──────────────────────────────────────────────────────
+      const ws = workbook.addWorksheet("Edições");
+      ws.columns = [
+        { header: "Canal",               key: "canal",               width: 14 },
+        { header: "Nome da Campanha",     key: "nome_campanha",       width: 32 },
+        { header: "Tipo de Campanha",     key: "tipo_campanha",       width: 18 },
+        { header: "Nível de Edição",      key: "nivel_edicao",        width: 22 },
+        { header: "Data da Alteração",    key: "data_alteracao",      width: 16 },
+        { header: "Descrição",            key: "descricao_alteracao", width: 50 },
+        { header: "Motivo",               key: "motivo",              width: 40 },
+        { header: "Data de Revisão",      key: "data_revisao",        width: 16 },
+        { header: "Qtd. Revisões",        key: "qtd_revisoes",        width: 14 },
+        { header: "Qtd. Imagens",         key: "qtd_imagens",         width: 14 },
+        { header: "Revisado em",          key: "data_revisao_concluida", width: 16 },
+      ];
+
+      // Style header row
+      const headerRow = ws.getRow(1);
+      headerRow.font = { bold: true, color: { argb: "FFFFFFFF" } };
+      headerRow.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF085BA7" } };
+      headerRow.alignment = { vertical: "middle", horizontal: "center" };
+      headerRow.height = 22;
+
+      filteredEdits.forEach(e => {
+        const allImages = [
+          ...(e.imagens_alteracao || []),
+          ...(e.revisoes?.flatMap(r => r.imagens) || []),
+        ];
+        ws.addRow({
+          canal:               e.canal || "",
+          nome_campanha:       e.nome_campanha,
+          tipo_campanha:       e.tipo_campanha,
+          nivel_edicao:        e.nivel_edicao,
+          data_alteracao:      e.data_alteracao,
+          descricao_alteracao: e.descricao_alteracao,
+          motivo:              e.motivo,
+          data_revisao:        e.data_revisao || "",
+          qtd_revisoes:        e.revisoes?.length ?? 0,
+          qtd_imagens:         allImages.length,
+          data_revisao_concluida: e.data_revisao_concluida || "",
+        });
+      });
+
+      // Freeze header, auto-filter
+      ws.views = [{ state: "frozen", ySplit: 1 }];
+      ws.autoFilter = { from: "A1", to: "K1" };
+
+      // ── Image sheets (one per edit that has images) ───────────────────────────
+      for (const edit of filteredEdits) {
+        const allImages = [
+          ...(edit.imagens_alteracao || []),
+          ...(edit.revisoes?.flatMap(r => r.imagens) || []),
+        ];
+        if (allImages.length === 0) continue;
+
+        // Sheet name: max 31 chars, no special chars
+        const sheetName = edit.nome_campanha
+          .replace(/[\\/*?:[\]]/g, "-")
+          .substring(0, 28) + (edit.id?.substring(0, 3) ?? "");
+
+        const imgWs = workbook.addWorksheet(sheetName);
+
+        // Header info
+        imgWs.getCell("A1").value = "Campanha:";
+        imgWs.getCell("B1").value = edit.nome_campanha;
+        imgWs.getCell("A2").value = "Data:";
+        imgWs.getCell("B2").value = edit.data_alteracao;
+        imgWs.getCell("A1").font = { bold: true };
+        imgWs.getCell("A2").font = { bold: true };
+
+        // Add each image in a column layout (2 per row)
+        const IMG_W = 360, IMG_H = 270;
+        const COL_PX_W = 100; // approximate px per column unit
+        const ROW_PX_H = 15;  // approximate px per row unit
+        const colsPerImg = Math.ceil(IMG_W / COL_PX_W);
+        const rowsPerImg = Math.ceil(IMG_H / ROW_PX_H);
+        const IMAGES_PER_ROW = 2;
+
+        for (let i = 0; i < allImages.length; i++) {
+          try {
+            const imgData = allImages[i];
+            const base64 = imgData.includes(",") ? imgData.split(",")[1] : imgData;
+            const ext = imgData.includes("png") ? "png" : "jpeg";
+            const imageId = workbook.addImage({ base64, extension: ext as "png" | "jpeg" });
+
+            const gridCol = (i % IMAGES_PER_ROW) * colsPerImg;
+            const gridRow = 4 + Math.floor(i / IMAGES_PER_ROW) * (rowsPerImg + 1);
+
+            imgWs.addImage(imageId, {
+              tl: { col: gridCol, row: gridRow },
+              ext: { width: IMG_W, height: IMG_H },
+            });
+          } catch {
+            // skip unreadable image
+          }
+        }
+      }
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], {
+        type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `edicoes-campanhas-${today()}.xlsx`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Erro ao exportar Excel:", err);
+      alert("Erro ao gerar o Excel. Tente o CSV como alternativa.");
+    }
+  }
+
   // ── Helpers ───────────────────────────────────────────────────────────────
 
   function isPendente(edit: CampaignEdit) {
@@ -455,7 +579,14 @@ export default function CampaignEditsPage() {
             className="flex items-center space-x-2 px-4 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-all font-semibold"
           >
             <Download className="w-5 h-5" />
-            <span>Exportar CSV</span>
+            <span>CSV</span>
+          </button>
+          <button
+            onClick={exportarExcel}
+            className="flex items-center space-x-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all font-semibold"
+          >
+            <Download className="w-5 h-5" />
+            <span>Excel + Imagens</span>
           </button>
           <button
             onClick={() => { setFormData(emptyForm()); setEditingId(null); setShowForm(true); }}
@@ -548,21 +679,28 @@ export default function CampaignEditsPage() {
           )}
         </div>
 
-        {/* Date — default = today, user can expand range */}
+        {/* Date — with Filtrar button */}
         <div className="pt-3 border-t border-slate-100 flex items-center gap-3 flex-wrap">
           <span className="text-sm font-semibold text-slate-700">Data da alteração:</span>
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500">De</label>
-            <input type="date" value={filterDataDe} onChange={e => setFilterDataDe(e.target.value)}
+            <input type="date" value={pendingDataDe} onChange={e => setPendingDataDe(e.target.value)}
               className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
           </div>
           <div className="flex items-center gap-2">
             <label className="text-xs text-slate-500">Até</label>
-            <input type="date" value={filterDataAte} onChange={e => setFilterDataAte(e.target.value)}
+            <input type="date" value={pendingDataAte} onChange={e => setPendingDataAte(e.target.value)}
               className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
           </div>
-          {(filterDataDe || filterDataAte) && (
-            <button onClick={() => { setFilterDataDe(""); setFilterDataAte(""); }}
+          <button
+            onClick={applyDateFilter}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-[#085ba7] text-white rounded-lg text-sm font-semibold hover:bg-[#085ba7]/90 transition-colors"
+          >
+            <Filter className="w-4 h-4" />
+            Filtrar
+          </button>
+          {(pendingDataDe || pendingDataAte) && (
+            <button onClick={() => { setPendingDataDe(""); setPendingDataAte(""); applyDateFilter(); }}
               className="px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg">
               Ver todos
             </button>
@@ -572,9 +710,8 @@ export default function CampaignEditsPage() {
 
       {/* ── Form modal ──────────────────────────────────────────────────────── */}
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 overflow-y-auto z-50">
-          <div className="flex min-h-full items-center justify-center p-6">
-          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full relative overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6">
+          <div className="bg-white rounded-2xl p-8 max-w-3xl w-full max-h-[90vh] overflow-y-auto relative">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-slate-900">
                 {editingId ? "Editar Registro" : "Registrar Nova Edição"}
@@ -607,7 +744,6 @@ export default function CampaignEditsPage() {
                     setFormData({
                       ...formData,
                       canal: c,
-                      // Reset tipo/nível when switching between ML and non-ML
                       tipo_campanha: toML ? TIPOS_ML[0] : (wasML ? "Pesquisa" : formData.tipo_campanha),
                       nivel_edicao: (toML !== wasML) ? "" : formData.nivel_edicao,
                     });
@@ -720,7 +856,6 @@ export default function CampaignEditsPage() {
                 <div className="space-y-4">
                   {formData.revisoes.map((rev, idx) => (
                     <div key={idx} className="border border-slate-200 rounded-xl p-4 space-y-3 bg-slate-50">
-                      {/* Revisão header */}
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-bold text-[#085ba7]">Revisão {idx + 1}</span>
                         <div className="flex items-center gap-3">
@@ -737,7 +872,6 @@ export default function CampaignEditsPage() {
                         </div>
                       </div>
 
-                      {/* Text */}
                       <textarea value={rev.texto} rows={3}
                         onChange={e => updateRevisaoTexto(idx, e.target.value)}
                         onPaste={e => handleRevisaoImagePaste(e, idx)}
@@ -745,7 +879,6 @@ export default function CampaignEditsPage() {
                         placeholder="Anotações da revisão... (Ctrl+V para colar imagens)"
                       />
 
-                      {/* Images */}
                       {rev.imagens.length > 0 && (
                         <div className="grid grid-cols-3 gap-2">
                           {rev.imagens.map((img, imgIdx) => (
@@ -793,6 +926,148 @@ export default function CampaignEditsPage() {
               </div>
             </form>
           </div>
+        </div>
+      )}
+
+      {/* ── View dialog (Exibir) ──────────────────────────────────────────────── */}
+      {viewingEdit && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6"
+          onClick={() => setViewingEdit(null)}>
+          <div className="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+            {/* Dialog Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-8 py-5 flex items-center justify-between rounded-t-2xl z-10">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">{viewingEdit.nome_campanha}</h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="px-2 py-0.5 bg-[#085ba7] text-white text-xs font-bold rounded">{viewingEdit.tipo_campanha}</span>
+                  <span className="px-2 py-0.5 bg-slate-600 text-white text-xs font-medium rounded">{viewingEdit.nivel_edicao}</span>
+                  {viewingEdit.canal && (
+                    <span className="px-2 py-0.5 bg-[#ff901c] text-white text-xs font-medium rounded">{viewingEdit.canal}</span>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setViewingEdit(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors">
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Dialog Body */}
+            <div className="px-8 py-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Data da Alteração</span>
+                  <p className="text-slate-900 font-medium mt-1">{new Date(viewingEdit.data_alteracao).toLocaleDateString("pt-BR")}</p>
+                </div>
+                {viewingEdit.data_revisao && (
+                  <div>
+                    <span className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Data de Revisão</span>
+                    <p className="text-slate-900 font-medium mt-1">{new Date(viewingEdit.data_revisao).toLocaleDateString("pt-BR")}</p>
+                  </div>
+                )}
+                {viewingEdit.data_revisao_concluida && (
+                  <div className="col-span-2">
+                    <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">
+                      <CheckCircle className="w-3 h-3" />
+                      Revisado em {new Date(viewingEdit.data_revisao_concluida).toLocaleDateString("pt-BR")}
+                    </span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-700 mb-2">Descrição da Alteração</h4>
+                <p className="text-slate-600 whitespace-pre-wrap text-sm leading-relaxed bg-slate-50 p-4 rounded-lg">{viewingEdit.descricao_alteracao}</p>
+              </div>
+
+              {viewingEdit.imagens_alteracao?.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-bold text-slate-700 mb-3">
+                    Evidências da alteração ({viewingEdit.imagens_alteracao.length})
+                  </h4>
+                  <div className="grid grid-cols-3 gap-3">
+                    {viewingEdit.imagens_alteracao.map((img, idx) => (
+                      <div key={idx} className="relative group cursor-pointer" onClick={() => setLightboxImage(img)}>
+                        <img src={img} alt={`Evidência ${idx + 1}`}
+                          className="w-full h-32 object-cover rounded-lg border-2 border-slate-200 group-hover:border-[#108bd1] transition-colors" />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-lg transition-all flex items-center justify-center">
+                          <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <h4 className="text-sm font-bold text-slate-700 mb-2">Motivo da Alteração</h4>
+                <p className="text-slate-600 whitespace-pre-wrap text-sm leading-relaxed bg-slate-50 p-4 rounded-lg">{viewingEdit.motivo}</p>
+              </div>
+
+              {(viewingEdit.revisoes?.length > 0 || viewingEdit.observacoes_revisao) && (
+                <div>
+                  <h4 className="text-sm font-bold text-slate-700 mb-3">
+                    Revisões {viewingEdit.revisoes?.length > 0 && `(${viewingEdit.revisoes.length})`}
+                  </h4>
+                  <div className="space-y-3">
+                    {!viewingEdit.revisoes?.length && viewingEdit.observacoes_revisao && (
+                      <div className="bg-blue-50 border-l-4 border-[#108bd1] p-4 rounded">
+                        <p className="text-slate-700 whitespace-pre-wrap text-sm">{viewingEdit.observacoes_revisao}</p>
+                      </div>
+                    )}
+                    {viewingEdit.revisoes?.map((rev, idx) => (
+                      <div key={idx} className="bg-blue-50 border-l-4 border-[#108bd1] p-4 rounded space-y-3">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-bold text-[#085ba7]">Revisão {idx + 1}</span>
+                          {rev.ultima_alteracao && (
+                            <span className="text-xs text-slate-400 flex items-center gap-1">
+                              <Calendar className="w-3 h-3" />
+                              {new Date(rev.ultima_alteracao).toLocaleDateString("pt-BR")}
+                            </span>
+                          )}
+                        </div>
+                        {rev.texto && <p className="text-slate-700 whitespace-pre-wrap text-sm">{rev.texto}</p>}
+                        {rev.imagens?.length > 0 && (
+                          <div className="grid grid-cols-4 gap-2 mt-2">
+                            {rev.imagens.map((img, imgIdx) => (
+                              <div key={imgIdx} className="relative group cursor-pointer"
+                                onClick={() => setLightboxImage(img)}>
+                                <img src={img} alt={`Rev ${idx + 1} img ${imgIdx + 1}`}
+                                  className="w-full h-20 object-cover rounded-lg border border-slate-200 group-hover:border-[#108bd1] transition-colors" />
+                                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-lg transition-all flex items-center justify-center">
+                                  <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Dialog Actions */}
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                {isPendente(viewingEdit) && (
+                  <button onClick={() => { viewingEdit.id && marcarComoRevisado(viewingEdit.id); setViewingEdit(null); }}
+                    className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold text-sm">
+                    <CheckCircle className="w-4 h-4" />
+                    Marcar como Revisado
+                  </button>
+                )}
+                <button onClick={() => { openEdit(viewingEdit); setViewingEdit(null); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#085ba7] text-white rounded-lg hover:bg-[#085ba7]/90 font-semibold text-sm">
+                  <Edit className="w-4 h-4" />
+                  Editar
+                </button>
+                <button onClick={() => setViewingEdit(null)}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm ml-auto">
+                  Fechar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -835,7 +1110,6 @@ export default function CampaignEditsPage() {
       ) : (
         <div className="grid gap-4">
           {filteredEdits.map((edit) => {
-            const isExpanded = expandedCards.has(edit.id ?? "");
             const pendente = isPendente(edit);
             const diasAtraso = edit.data_revisao ? getDiasAtraso(edit.data_revisao) : 0;
 
@@ -870,6 +1144,11 @@ export default function CampaignEditsPage() {
                               {edit.revisoes.length} revisão{edit.revisoes.length !== 1 ? "ões" : ""}
                             </span>
                           )}
+                          {(edit.imagens_alteracao?.length > 0 || edit.revisoes?.some(r => r.imagens?.length > 0)) && (
+                            <span className="px-2 py-1 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                              📷 {(edit.imagens_alteracao?.length || 0) + (edit.revisoes?.reduce((acc, r) => acc + (r.imagens?.length || 0), 0) || 0)} img
+                            </span>
+                          )}
                           {pendente && (
                             <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded animate-pulse">
                               {diasAtraso === 0 ? "HOJE!" : `${diasAtraso} dia${diasAtraso > 1 ? "s" : ""} atraso`}
@@ -885,7 +1164,7 @@ export default function CampaignEditsPage() {
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      {pendente && !isExpanded && (
+                      {pendente && (
                         <button onClick={() => edit.id && marcarComoRevisado(edit.id)}
                           className="p-2 bg-green-500 text-white hover:bg-green-600 rounded-lg" title="Marcar como Revisado">
                           <CheckCircle className="w-5 h-5" />
@@ -904,109 +1183,15 @@ export default function CampaignEditsPage() {
                         className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Excluir">
                         <Trash2 className="w-5 h-5" />
                       </button>
-                      <button onClick={() => edit.id && toggleCard(edit.id)}
-                        className="p-2 text-slate-600 hover:bg-slate-50 rounded-lg">
-                        {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
+                      <button onClick={() => setViewingEdit(edit)}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                        title="Exibir detalhes">
+                        <Eye className="w-4 h-4" />
+                        Exibir
                       </button>
                     </div>
                   </div>
                 </div>
-
-                {isExpanded && (
-                  <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-4 animate-in slide-in-from-top duration-200">
-                    <div className="flex items-center space-x-3">
-                      <span className="px-3 py-1 bg-slate-100 text-slate-700 text-sm font-semibold rounded-full">
-                        {edit.nivel_edicao}
-                      </span>
-                      {edit.data_revisao && (
-                        <span className="flex items-center space-x-1 text-sm text-slate-600">
-                          <Calendar className="w-4 h-4" />
-                          <span>Revisão: {new Date(edit.data_revisao).toLocaleDateString("pt-BR")}</span>
-                        </span>
-                      )}
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-700 mb-1">Descrição:</h4>
-                      <p className="text-slate-600 whitespace-pre-wrap">{edit.descricao_alteracao}</p>
-                    </div>
-
-                    {edit.imagens_alteracao?.length > 0 && (
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-700 mb-2">Evidências da alteração:</h4>
-                        <div className="grid grid-cols-4 gap-2">
-                          {edit.imagens_alteracao.map((img, idx) => (
-                            <div key={idx} className="relative group cursor-pointer" onClick={() => setLightboxImage(img)}>
-                              <img src={img} alt={`Evidência ${idx + 1}`}
-                                className="w-full h-24 object-cover rounded-lg border-2 border-slate-200 group-hover:border-[#108bd1] transition-colors" />
-                              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-lg transition-all flex items-center justify-center">
-                                <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-700 mb-1">Motivo:</h4>
-                      <p className="text-slate-600 whitespace-pre-wrap">{edit.motivo}</p>
-                    </div>
-
-                    {/* Revisões múltiplas */}
-                    {(edit.revisoes?.length > 0 || edit.observacoes_revisao) && (
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-700 mb-2">
-                          Revisões {edit.revisoes?.length > 0 && `(${edit.revisoes.length})`}
-                        </h4>
-                        <div className="space-y-3">
-                          {/* Legacy single review (old records) */}
-                          {!edit.revisoes?.length && edit.observacoes_revisao && (
-                            <div className="bg-blue-50 border-l-4 border-[#108bd1] p-3 rounded">
-                              <p className="text-slate-700 whitespace-pre-wrap">{edit.observacoes_revisao}</p>
-                            </div>
-                          )}
-                          {/* New multiple reviews */}
-                          {edit.revisoes?.map((rev, idx) => (
-                            <div key={idx} className="bg-blue-50 border-l-4 border-[#108bd1] p-3 rounded space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs font-bold text-[#085ba7]">Revisão {idx + 1}</span>
-                                {rev.ultima_alteracao && (
-                                  <span className="text-xs text-slate-400 flex items-center gap-1">
-                                    <Calendar className="w-3 h-3" />
-                                    {new Date(rev.ultima_alteracao).toLocaleDateString("pt-BR")}
-                                  </span>
-                                )}
-                              </div>
-                              {rev.texto && <p className="text-slate-700 whitespace-pre-wrap text-sm">{rev.texto}</p>}
-                              {rev.imagens?.length > 0 && (
-                                <div className="grid grid-cols-4 gap-2 mt-2">
-                                  {rev.imagens.map((img, imgIdx) => (
-                                    <div key={imgIdx} className="relative group cursor-pointer"
-                                      onClick={() => setLightboxImage(img)}>
-                                      <img src={img} alt={`Rev ${idx + 1} img ${imgIdx + 1}`}
-                                        className="w-full h-20 object-cover rounded-lg border border-slate-200 group-hover:border-[#108bd1] transition-colors" />
-                                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 rounded-lg transition-all flex items-center justify-center">
-                                        <ZoomIn className="w-5 h-5 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {pendente && (
-                      <button onClick={() => edit.id && marcarComoRevisado(edit.id)}
-                        className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-500 text-white rounded-lg hover:bg-green-600 font-semibold">
-                        <CheckCircle className="w-5 h-5" /><span>Marcar como Revisado</span>
-                      </button>
-                    )}
-                  </div>
-                )}
               </div>
             );
           })}

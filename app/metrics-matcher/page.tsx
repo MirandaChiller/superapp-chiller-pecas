@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import { Plus, X, Edit, Trash2, ChevronDown, ChevronUp, Calendar, User, Flag, GripVertical, Paperclip, Upload, Download } from "lucide-react";
+import { Plus, X, Edit, Trash2, Eye, Calendar, User, Flag, GripVertical, Paperclip, Upload, Download } from "lucide-react";
 
 interface Column {
   id: string;
@@ -60,7 +60,7 @@ export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
-  const [expandedTasks, setExpandedTasks] = useState<Set<string>>(new Set());
+  const [viewingTask, setViewingTask] = useState<Task | null>(null);
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null);
   const [dragOverTaskId, setDragOverTaskId] = useState<string | null>(null);
   
@@ -442,18 +442,6 @@ export default function TasksPage() {
     });
   }
 
-  function toggleExpand(taskId: string) {
-    setExpandedTasks(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(taskId)) {
-        newSet.delete(taskId);
-      } else {
-        newSet.add(taskId);
-      }
-      return newSet;
-    });
-  }
-
   function getFilteredTasks(columnId: string) {
     return tasks
       .filter(t => t.column_id === columnId)
@@ -593,7 +581,6 @@ export default function TasksPage() {
 
                 <div className="p-3 space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto min-h-[200px]">
                   {columnTasks.map(task => {
-                    const isExpanded = expandedTasks.has(task.id);
                     const isOverdue = isTaskOverdue(task.data_vencimento);
                     const priorityColor = getTaskPriorityColor(task.prioridade);
                     const isDragging = draggedTaskId === task.id;
@@ -631,10 +618,12 @@ export default function TasksPage() {
                                 <Trash2 className="w-4 h-4 text-red-600" />
                               </button>
                               <button
-                                onClick={() => toggleExpand(task.id)}
-                                className="p-1 hover:bg-slate-100 rounded"
+                                onClick={() => setViewingTask(task)}
+                                className="flex items-center gap-1 px-2 py-1 hover:bg-slate-100 rounded text-xs font-semibold text-slate-600"
+                                title="Exibir detalhes"
                               >
-                                {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                                <Eye className="w-3.5 h-3.5" />
+                                Exibir
                               </button>
                             </div>
                           </div>
@@ -680,32 +669,6 @@ export default function TasksPage() {
                             </div>
                           )}
 
-                          {isExpanded && (
-                            <div className="mt-2 pt-2 border-t border-slate-100 ml-6 space-y-2">
-                              {task.descricao && (
-                                <p className="text-sm text-slate-600 whitespace-pre-wrap">{task.descricao}</p>
-                              )}
-                              
-                              {task.attachments && task.attachments.length > 0 && (
-                                <div>
-                                  <p className="text-xs font-semibold text-slate-700 mb-1">Anexos:</p>
-                                  <div className="space-y-1">
-                                    {task.attachments.map(att => (
-                                      <button
-                                        key={att.id}
-                                        onClick={() => downloadAttachment(att)}
-                                        className="flex items-center space-x-2 text-xs text-slate-600 hover:text-[#085ba7] hover:bg-blue-50 px-2 py-1 rounded w-full"
-                                      >
-                                        <span>{getFileIcon(att.tipo_arquivo)}</span>
-                                        <span className="flex-1 text-left truncate">{att.nome_arquivo}</span>
-                                        <Download className="w-3 h-3" />
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
@@ -722,9 +685,109 @@ export default function TasksPage() {
         </div>
       </div>
 
+      {/* ── Task view dialog ─────────────────────────────────────────────────── */}
+      {viewingTask && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-6"
+          onClick={() => setViewingTask(null)}>
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl"
+            onClick={e => e.stopPropagation()}>
+            {/* Header */}
+            <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-4 flex items-start justify-between rounded-t-2xl z-10">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl font-bold text-slate-900">{viewingTask.titulo}</h2>
+                <div className="flex flex-wrap items-center gap-2 mt-1">
+                  {viewingTask.responsavel && (
+                    <span className="text-xs flex items-center gap-1 text-slate-600">
+                      <User className="w-3 h-3" />{viewingTask.responsavel}
+                    </span>
+                  )}
+                  {viewingTask.prioridade && (
+                    <span className="text-xs font-semibold flex items-center gap-1"
+                      style={{ color: getTaskPriorityColor(viewingTask.prioridade) }}>
+                      <Flag className="w-3 h-3" />{viewingTask.prioridade}
+                    </span>
+                  )}
+                  {viewingTask.data_vencimento && (
+                    <span className={`text-xs flex items-center gap-1 ${isTaskOverdue(viewingTask.data_vencimento) ? 'text-red-600 font-semibold' : 'text-slate-600'}`}>
+                      <Calendar className="w-3 h-3" />
+                      {new Date(viewingTask.data_vencimento).toLocaleDateString('pt-BR')}
+                      {isTaskOverdue(viewingTask.data_vencimento) && ' (Vencida)'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <button onClick={() => setViewingTask(null)}
+                className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg ml-3 flex-shrink-0">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="px-6 py-5 space-y-5">
+              {/* Tags */}
+              {viewingTask.tags && viewingTask.tags.length > 0 && (
+                <div className="flex flex-wrap gap-2">
+                  {viewingTask.tags.map(tag => (
+                    <span key={tag.id}
+                      className="px-3 py-1 text-xs font-semibold rounded-full text-white"
+                      style={{ backgroundColor: tag.cor }}>
+                      {tag.nome}
+                    </span>
+                  ))}
+                </div>
+              )}
+
+              {/* Description */}
+              {viewingTask.descricao && (
+                <div>
+                  <h4 className="text-sm font-bold text-slate-700 mb-2">Descrição</h4>
+                  <p className="text-slate-600 whitespace-pre-wrap text-sm leading-relaxed bg-slate-50 p-4 rounded-lg">{viewingTask.descricao}</p>
+                </div>
+              )}
+
+              {/* Attachments */}
+              {viewingTask.attachments && viewingTask.attachments.length > 0 && (
+                <div>
+                  <h4 className="text-sm font-bold text-slate-700 mb-2">
+                    Anexos ({viewingTask.attachments.length})
+                  </h4>
+                  <div className="space-y-2">
+                    {viewingTask.attachments.map(att => (
+                      <button key={att.id}
+                        onClick={() => downloadAttachment(att)}
+                        className="flex items-center gap-3 w-full text-left px-4 py-3 bg-slate-50 hover:bg-blue-50 hover:text-[#085ba7] rounded-lg transition-colors">
+                        <span className="text-xl">{getFileIcon(att.tipo_arquivo)}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{att.nome_arquivo}</p>
+                          <p className="text-xs text-slate-500">{(att.tamanho / 1024).toFixed(1)} KB</p>
+                        </div>
+                        <Download className="w-4 h-4 flex-shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Actions */}
+              <div className="flex gap-3 pt-2 border-t border-slate-100">
+                <button onClick={() => { openEditTask(viewingTask); setViewingTask(null); }}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#085ba7] text-white rounded-lg hover:bg-[#085ba7]/90 font-semibold text-sm">
+                  <Edit className="w-4 h-4" />
+                  Editar
+                </button>
+                <button onClick={() => setViewingTask(null)}
+                  className="px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium text-sm ml-auto">
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showColumnModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-md w-full">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">
               {editingColumn ? "Editar Coluna" : "Nova Coluna"}
             </h2>
@@ -771,8 +834,8 @@ export default function TasksPage() {
       )}
 
       {showTaskModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full my-8">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <h2 className="text-2xl font-bold mb-4">
               {editingTask ? "Editar Tarefa" : "Nova Tarefa"}
             </h2>

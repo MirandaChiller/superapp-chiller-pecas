@@ -134,6 +134,28 @@ CREATE TABLE IF NOT EXISTS campanhas_trafego (
 );
 
 -- =============================================
+-- TABELA: UTM CODES (Criador de UTMs)
+-- =============================================
+CREATE TABLE IF NOT EXISTS utm_codes (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+
+    -- Short alphanumeric code used in UTM parameters
+    codigo VARCHAR(30) NOT NULL UNIQUE,
+
+    -- Full meaningful description for analysis
+    descricao TEXT NOT NULL,
+
+    -- Category: Geral | Fonte | Mídia | Campanha | Conteúdo | Termo
+    categoria VARCHAR(50) DEFAULT 'Geral'
+);
+
+ALTER TABLE utm_codes DISABLE ROW LEVEL SECURITY;
+
+CREATE INDEX idx_utm_codes_codigo ON utm_codes(codigo);
+CREATE INDEX idx_utm_codes_categoria ON utm_codes(categoria);
+
+-- =============================================
 -- ÍNDICES PARA PERFORMANCE
 -- =============================================
 CREATE INDEX idx_posts_data_publicacao ON posts_planejados(data_publicacao);

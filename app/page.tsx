@@ -1,9 +1,8 @@
 import Link from "next/link";
 import {
   Users, Target, PieChart, Calendar,
-  TrendingUp, BarChart3, ArrowRight, Edit3
+  BarChart3, ArrowRight, Edit3, Link as LinkIcon, CheckSquare
 } from "lucide-react";
-import { CheckSquare } from "lucide-react";
 
 const tools = [
   {
@@ -54,6 +53,13 @@ const tools = [
     href: "/campaign-edits",
     icon: Edit3,
     step: 7,
+  },
+  {
+    name: "Criador de UTMs",
+    description: "Gere links rastreados com códigos semânticos vinculados a descrições completas",
+    href: "/utm-builder",
+    icon: LinkIcon,
+    step: 8,
   },
 ];
 

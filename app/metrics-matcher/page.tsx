@@ -529,15 +529,15 @@ export default function TasksPage() {
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-4">
-        <div className="flex space-x-4 min-w-max">
+      <div className="overflow-x-auto pb-4 -mx-3 sm:mx-0 px-3 sm:px-0">
+        <div className="flex space-x-3 sm:space-x-4" style={{ minWidth: "max-content" }}>
           {columns.map(column => {
             const columnTasks = getFilteredTasks(column.id);
-            
+
             return (
               <div
                 key={column.id}
-                className="w-80 flex-shrink-0 bg-slate-50 rounded-xl"
+                className="w-72 sm:w-80 flex-shrink-0 bg-slate-50 rounded-xl"
                 style={{ borderTop: `4px solid ${column.cor}` }}
                 onDragOver={handleDragOver}
                 onDrop={() => handleColumnDrop(column.id)}

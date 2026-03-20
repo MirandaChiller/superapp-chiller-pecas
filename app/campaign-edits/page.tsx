@@ -563,36 +563,36 @@ export default function CampaignEditsPage() {
     <div className="space-y-6">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-3">
-          <div className="w-12 h-12 bg-[#085ba7] rounded-xl flex items-center justify-center">
-            <Target className="w-6 h-6 text-white" />
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+        <div className="flex items-center space-x-3 flex-1 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-[#085ba7] rounded-xl flex items-center justify-center flex-shrink-0">
+            <Target className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
-          <div>
-            <h1 className="text-3xl font-bold text-slate-900">Edições em Campanhas</h1>
-            <p className="text-slate-600">Registre e acompanhe alterações em campanhas Google Ads</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-3xl font-bold text-slate-900">Edições em Campanhas</h1>
+            <p className="text-slate-600 text-sm hidden sm:block">Registre e acompanhe alterações em campanhas Google Ads</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={exportarCSV}
-            className="flex items-center space-x-2 px-4 py-3 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-all font-semibold"
+            className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition-all font-semibold text-sm"
           >
-            <Download className="w-5 h-5" />
+            <Download className="w-4 h-4" />
             <span>CSV</span>
           </button>
           <button
             onClick={exportarExcel}
-            className="flex items-center space-x-2 px-4 py-3 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all font-semibold"
+            className="flex items-center gap-1.5 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all font-semibold text-sm"
           >
-            <Download className="w-5 h-5" />
-            <span>Excel + Imagens</span>
+            <Download className="w-4 h-4" />
+            <span className="hidden sm:inline">Excel + </span>Imagens
           </button>
           <button
             onClick={() => { setFormData(emptyForm()); setEditingId(null); setShowForm(true); }}
-            className="flex items-center space-x-2 px-6 py-3 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold"
+            className="flex items-center gap-1.5 px-4 py-2 bg-[#ff901c] text-white rounded-lg hover:shadow-lg transition-all font-semibold text-sm"
           >
-            <Plus className="w-5 h-5" />
+            <Plus className="w-4 h-4" />
             <span>Nova Edição</span>
           </button>
         </div>
@@ -680,31 +680,33 @@ export default function CampaignEditsPage() {
         </div>
 
         {/* Date — with Filtrar button */}
-        <div className="pt-3 border-t border-slate-100 flex items-center gap-3 flex-wrap">
+        <div className="pt-3 border-t border-slate-100 space-y-2">
           <span className="text-sm font-semibold text-slate-700">Data da alteração:</span>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500">De</label>
-            <input type="date" value={pendingDataDe} onChange={e => setPendingDataDe(e.target.value)}
-              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
-          </div>
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-slate-500">Até</label>
-            <input type="date" value={pendingDataAte} onChange={e => setPendingDataAte(e.target.value)}
-              className="px-3 py-1.5 border border-slate-300 rounded-lg text-sm" />
-          </div>
-          <button
-            onClick={applyDateFilter}
-            className="flex items-center gap-1.5 px-4 py-1.5 bg-[#085ba7] text-white rounded-lg text-sm font-semibold hover:bg-[#085ba7]/90 transition-colors"
-          >
-            <Filter className="w-4 h-4" />
-            Filtrar
-          </button>
-          {(pendingDataDe || pendingDataAte) && (
-            <button onClick={() => { setPendingDataDe(""); setPendingDataAte(""); applyDateFilter(); }}
-              className="px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg">
-              Ver todos
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-slate-500 whitespace-nowrap">De</label>
+              <input type="date" value={pendingDataDe} onChange={e => setPendingDataDe(e.target.value)}
+                className="px-2 py-1.5 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <label className="text-xs text-slate-500 whitespace-nowrap">Até</label>
+              <input type="date" value={pendingDataAte} onChange={e => setPendingDataAte(e.target.value)}
+                className="px-2 py-1.5 border border-slate-300 rounded-lg text-sm" />
+            </div>
+            <button
+              onClick={applyDateFilter}
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#085ba7] text-white rounded-lg text-sm font-semibold hover:bg-[#085ba7]/90 transition-colors"
+            >
+              <Filter className="w-4 h-4" />
+              Filtrar
             </button>
-          )}
+            {(pendingDataDe || pendingDataAte) && (
+              <button onClick={() => { setPendingDataDe(""); setPendingDataAte(""); applyDateFilter(); }}
+                className="px-3 py-1.5 text-xs text-slate-500 hover:text-red-600 bg-slate-100 hover:bg-red-50 rounded-lg">
+                Ver todos
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -1120,16 +1122,16 @@ export default function CampaignEditsPage() {
                 }`}>
                 <div className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-4 flex-1">
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         pendente ? "bg-gradient-to-br from-red-500 to-red-600 animate-pulse" : "bg-[#085ba7]"
                       }`}>
                         {pendente
-                          ? <AlertCircle className="w-5 h-5 text-white" />
-                          : <Target className="w-5 h-5 text-white" />}
+                          ? <AlertCircle className="w-4 h-4 text-white" />
+                          : <Target className="w-4 h-4 text-white" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-slate-900 truncate">{edit.nome_campanha}</h3>
+                        <h3 className="text-sm sm:text-lg font-bold text-slate-900 truncate">{edit.nome_campanha}</h3>
                         <div className="flex items-center flex-wrap gap-1 mt-1">
                           <span className="px-2 py-1 bg-[#085ba7] text-white text-xs font-bold rounded">{edit.tipo_campanha}</span>
                           <span className="px-2 py-1 bg-slate-600 text-white text-xs font-medium rounded">{edit.nivel_edicao}</span>
@@ -1163,31 +1165,31 @@ export default function CampaignEditsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       {pendente && (
                         <button onClick={() => edit.id && marcarComoRevisado(edit.id)}
-                          className="p-2 bg-green-500 text-white hover:bg-green-600 rounded-lg" title="Marcar como Revisado">
-                          <CheckCircle className="w-5 h-5" />
+                          className="p-1.5 bg-green-500 text-white hover:bg-green-600 rounded-lg" title="Marcar como Revisado">
+                          <CheckCircle className="w-4 h-4" />
                         </button>
                       )}
                       <button onClick={() => copiarConteudo(edit)}
-                        className={`p-2 rounded-lg transition-colors ${copiedId === edit.id ? "text-green-600 bg-green-50" : "text-slate-500 hover:bg-slate-50"}`}
+                        className={`p-1.5 rounded-lg transition-colors ${copiedId === edit.id ? "text-green-600 bg-green-50" : "text-slate-500 hover:bg-slate-50"}`}
                         title="Copiar">
-                        {copiedId === edit.id ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                        {copiedId === edit.id ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                       </button>
                       <button onClick={() => openEdit(edit)}
-                        className="p-2 text-[#085ba7] hover:bg-blue-50 rounded-lg" title="Editar">
-                        <Edit className="w-5 h-5" />
+                        className="p-1.5 text-[#085ba7] hover:bg-blue-50 rounded-lg" title="Editar">
+                        <Edit className="w-4 h-4" />
                       </button>
                       <button onClick={() => edit.id && deleteEdit(edit.id)}
-                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg" title="Excluir">
-                        <Trash2 className="w-5 h-5" />
+                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg" title="Excluir">
+                        <Trash2 className="w-4 h-4" />
                       </button>
                       <button onClick={() => setViewingEdit(edit)}
-                        className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-semibold transition-colors"
+                        className="flex items-center gap-1 px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition-colors"
                         title="Exibir detalhes">
-                        <Eye className="w-4 h-4" />
-                        Exibir
+                        <Eye className="w-3.5 h-3.5" />
+                        <span className="hidden sm:inline">Exibir</span>
                       </button>
                     </div>
                   </div>

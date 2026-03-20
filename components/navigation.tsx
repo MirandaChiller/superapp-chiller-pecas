@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Users, Target, PieChart, Calendar,
-  BarChart3, Home, Edit3, Link, CheckSquare
+  BarChart3, Home, Edit3, Link as LinkIcon, CheckSquare
 } from "lucide-react";
 
 const navigation = [
@@ -16,7 +16,7 @@ const navigation = [
   { name: "Tarefas", href: "/metrics-matcher", icon: CheckSquare },
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
   { name: "Edições Campanhas", href: "/campaign-edits", icon: Edit3 },
-  { name: "Criador de UTMs", href: "/utm-builder", icon: Link },
+  { name: "Criador de UTMs", href: "/utm-builder", icon: LinkIcon },
 ];
 
 export function Navigation() {

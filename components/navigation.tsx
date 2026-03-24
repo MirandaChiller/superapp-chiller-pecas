@@ -6,7 +6,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Users, Target, PieChart, Calendar,
-  BarChart3, Home, Edit3, Link as LinkIcon, CheckSquare, Menu, X, LogOut
+  BarChart3, Home, Edit3, Link as LinkIcon, CheckSquare, Menu, X, LogOut, UserCog
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -20,6 +20,7 @@ const navigation = [
   { name: "Indicadores", href: "/indicadores", icon: BarChart3 },
   { name: "Edições Campanhas", href: "/campaign-edits", icon: Edit3 },
   { name: "Criador de UTMs", href: "/utm-builder", icon: LinkIcon },
+  { name: "Usuários", href: "/admin/usuarios", icon: UserCog },
 ];
 
 export function Navigation() {

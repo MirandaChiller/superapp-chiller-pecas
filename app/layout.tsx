@@ -1,9 +1,8 @@
 import type { Metadata } from "next";
 import { Quicksand } from "next/font/google";
 import "./globals.css";
-import { Navigation } from "@/components/navigation";
 
-const quicksand = Quicksand({ 
+const quicksand = Quicksand({
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
   variable: "--font-quicksand"
@@ -22,12 +21,7 @@ export default function RootLayout({
   return (
     <html lang="pt-BR">
       <body className={quicksand.className}>
-        <div className="min-h-screen bg-gradient-to-br from-blue-50 to-slate-50 overflow-x-hidden">
-          <Navigation />
-          <main className="container mx-auto px-3 sm:px-4 py-5 sm:py-8 max-w-full">
-            {children}
-          </main>
-        </div>
+        {children}
       </body>
     </html>
   );

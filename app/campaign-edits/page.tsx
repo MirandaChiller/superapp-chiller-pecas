@@ -18,10 +18,11 @@ interface Revisao {
 
 interface CampaignEdit {
   id?: string;
-  nome_campanha: string;
-  tipo_campanha: string;
-  nivel_edicao: string;
   canal: string;
+  tipo_campanha: string;
+  nome_campanha: string;
+  nome_grupo: string;
+  nivel_edicao: string;
   data_alteracao: string;
   descricao_alteracao: string;
   imagens_alteracao: string[];
@@ -32,6 +33,16 @@ interface CampaignEdit {
   revisoes: Revisao[];
   data_revisao_concluida?: string;
   created_at?: string;
+}
+
+/** Parse a YYYY-MM-DD date string as local date (avoids UTC -1 day issue). */
+function parseLocalDate(d: string): Date {
+  const [y, m, day] = d.split("-").map(Number);
+  return new Date(y, m - 1, day);
+}
+function fmtDate(d: string | undefined): string {
+  if (!d) return "";
+  return parseLocalDate(d).toLocaleDateString("pt-BR");
 }
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -140,10 +151,11 @@ export default function CampaignEditsPage() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const emptyForm = (): CampaignEdit => ({
-    nome_campanha: "",
-    tipo_campanha: "Pesquisa",
-    nivel_edicao: "",
     canal: "",
+    tipo_campanha: "Pesquisa",
+    nome_campanha: "",
+    nome_grupo: "",
+    nivel_edicao: "",
     data_alteracao: today(),
     descricao_alteracao: "",
     imagens_alteracao: [],
@@ -170,6 +182,13 @@ export default function CampaignEditsPage() {
     if (showPendentes)            f = f.filter(isPendente);
     setFilteredEdits(f);
   }, [edits, filterTipo, filterCanal, showPendentes]);
+
+  // Lock body scroll when any modal/overlay is open
+  useEffect(() => {
+    const anyOpen = showForm || !!viewingEdit || !!lightboxImage;
+    document.body.classList.toggle("modal-open", anyOpen);
+    return () => document.body.classList.remove("modal-open");
+  }, [showForm, viewingEdit, lightboxImage]);
 
   // Deep-link: open edit form from ?edit=<id>
   useEffect(() => {
@@ -233,10 +252,11 @@ export default function CampaignEditsPage() {
 
   function openEdit(edit: CampaignEdit) {
     setFormData({
-      nome_campanha:       edit.nome_campanha,
-      tipo_campanha:       edit.tipo_campanha,
-      nivel_edicao:        edit.nivel_edicao,
       canal:               edit.canal || "",
+      tipo_campanha:       edit.tipo_campanha,
+      nome_campanha:       edit.nome_campanha,
+      nome_grupo:          edit.nome_grupo || "",
+      nivel_edicao:        edit.nivel_edicao,
       data_alteracao:      edit.data_alteracao,
       descricao_alteracao: edit.descricao_alteracao,
       imagens_alteracao:   edit.imagens_alteracao || [],
@@ -318,10 +338,11 @@ export default function CampaignEditsPage() {
     setSaveError(null);
     try {
       const payload = {
-        nome_campanha:       formData.nome_campanha,
-        tipo_campanha:       formData.tipo_campanha,
-        nivel_edicao:        formData.nivel_edicao,
         canal:               formData.canal,
+        tipo_campanha:       formData.tipo_campanha,
+        nome_campanha:       formData.nome_campanha,
+        nome_grupo:          formData.nome_grupo || null,
+        nivel_edicao:        formData.nivel_edicao,
         data_alteracao:      formData.data_alteracao,
         descricao_alteracao: formData.descricao_alteracao,
         imagens_alteracao:   formData.imagens_alteracao,
@@ -362,24 +383,24 @@ export default function CampaignEditsPage() {
   }
 
   function copiarConteudo(edit: CampaignEdit) {
-    const fmt = (d: string) => d ? new Date(d).toLocaleDateString("pt-BR") : "";
     const revisoesTxt = edit.revisoes?.length
       ? edit.revisoes.map((r, i) =>
-          `Revisão ${i + 1} (${fmt(r.ultima_alteracao)}): ${r.texto}`
+          `Revisão ${i + 1} (${fmtDate(r.ultima_alteracao)}): ${r.texto}`
         ).join("\n\n")
       : edit.observacoes_revisao || "(nenhuma)";
 
     const texto = [
       `Canal: ${edit.canal || "(não definido)"}`,
-      `Nome da campanha: ${edit.nome_campanha}`,
       `Tipo de Campanha: ${edit.tipo_campanha}`,
+      `Nome da campanha: ${edit.nome_campanha}`,
+      edit.nome_grupo ? `${nomeGrupoLabel(edit.tipo_campanha)}: ${edit.nome_grupo}` : null,
       `Nível de edição: ${edit.nivel_edicao}`,
-      `Data da Alteração: ${fmt(edit.data_alteracao)}`,
+      `Data da Alteração: ${fmtDate(edit.data_alteracao)}`,
       `Descrição da alteração: ${edit.descricao_alteracao}`,
       `Motivo da Alteração: ${edit.motivo}`,
-      `Data da revisão: ${edit.data_revisao ? fmt(edit.data_revisao) : "(não agendada)"}`,
+      `Data da revisão: ${edit.data_revisao ? fmtDate(edit.data_revisao) : "(não agendada)"}`,
       `Revisões:\n${revisoesTxt}`,
-    ].join("\n\n");
+    ].filter(Boolean).join("\n\n");
 
     navigator.clipboard.writeText(texto).then(() => {
       setCopiedId(edit.id ?? null);
@@ -554,6 +575,13 @@ export default function CampaignEditsPage() {
     ? NIVEIS_ML
     : formData.tipo_campanha === "Pesquisa" ? NIVEIS_PESQUISA : NIVEIS_PERFORMANCE_MAX;
 
+  /** Label do campo nome_grupo baseado no tipo de campanha */
+  function nomeGrupoLabel(tipo: string): string {
+    if (tipo === "Performance Max") return "Nome do Grupo de Recurso";
+    if (TIPOS_ML.includes(tipo)) return "Identificação do Anúncio";
+    return "Nome do Grupo de Anúncio";
+  }
+
   // Local count (within loaded date range) — used only for filter label
   const pendentesCount = edits.filter(isPendente).length;
 
@@ -725,20 +753,10 @@ export default function CampaignEditsPage() {
 
             <form onSubmit={handleSubmit} className="space-y-6">
 
-              {/* 1. Nome da Campanha */}
+              {/* 1. Canal */}
               <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Nome da Campanha *</label>
-                <input type="text" value={formData.nome_campanha} required
-                  onChange={e => setFormData({ ...formData, nome_campanha: e.target.value })}
-                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] font-medium"
-                  placeholder="Ex: Black Friday 2024 - Peças HVAC"
-                />
-              </div>
-
-              {/* 2. Canal */}
-              <div>
-                <label className="block text-sm font-semibold text-slate-700 mb-2">Canal</label>
-                <select value={formData.canal}
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Canal *</label>
+                <select value={formData.canal} required
                   onChange={e => {
                     const c = e.target.value;
                     const toML = ML_CANAIS.includes(c);
@@ -756,7 +774,7 @@ export default function CampaignEditsPage() {
                 </select>
               </div>
 
-              {/* 3. Tipo de Campanha */}
+              {/* 2. Tipo de Campanha — options driven by canal */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Tipo de Campanha *</label>
                 <select value={formData.tipo_campanha} required
@@ -766,7 +784,33 @@ export default function CampaignEditsPage() {
                 </select>
               </div>
 
-              {/* 4. Nível de Edição */}
+              {/* 3. Nome da Campanha */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">Nome da Campanha *</label>
+                <input type="text" value={formData.nome_campanha} required
+                  onChange={e => setFormData({ ...formData, nome_campanha: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] font-medium"
+                  placeholder="Ex: [Search][Vendas][Nordeste] - Norte-Nordeste"
+                />
+              </div>
+
+              {/* 4. Nome do Grupo de Anúncio / Recurso */}
+              <div>
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  {nomeGrupoLabel(formData.tipo_campanha)}
+                </label>
+                <input type="text" value={formData.nome_grupo}
+                  onChange={e => setFormData({ ...formData, nome_grupo: e.target.value })}
+                  className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-[#085ba7] font-medium"
+                  placeholder={
+                    formData.tipo_campanha === "Performance Max"
+                      ? "Ex: Grupo de recurso principal"
+                      : "Ex: Grupo - Ar Condicionado Split"
+                  }
+                />
+              </div>
+
+              {/* 5. Nível de Edição */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 mb-2">Nível de Edição *</label>
                 <select value={formData.nivel_edicao} required
@@ -864,7 +908,7 @@ export default function CampaignEditsPage() {
                           {rev.ultima_alteracao && (
                             <span className="text-xs text-slate-400 flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              Última alteração: {new Date(rev.ultima_alteracao).toLocaleDateString("pt-BR")}
+                              Última alteração: {fmtDate(rev.ultima_alteracao)}
                             </span>
                           )}
                           <button type="button" onClick={() => removeRevisao(idx)}
@@ -958,21 +1002,29 @@ export default function CampaignEditsPage() {
             {/* Dialog Body */}
             <div className="px-8 py-6 space-y-6">
               <div className="grid grid-cols-2 gap-4 text-sm">
+                {viewingEdit.nome_grupo && (
+                  <div className="col-span-2">
+                    <span className="font-semibold text-slate-500 text-xs uppercase tracking-wide">
+                      {nomeGrupoLabel(viewingEdit.tipo_campanha)}
+                    </span>
+                    <p className="text-slate-900 font-medium mt-1">{viewingEdit.nome_grupo}</p>
+                  </div>
+                )}
                 <div>
                   <span className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Data da Alteração</span>
-                  <p className="text-slate-900 font-medium mt-1">{new Date(viewingEdit.data_alteracao).toLocaleDateString("pt-BR")}</p>
+                  <p className="text-slate-900 font-medium mt-1">{fmtDate(viewingEdit.data_alteracao)}</p>
                 </div>
                 {viewingEdit.data_revisao && (
                   <div>
                     <span className="font-semibold text-slate-500 text-xs uppercase tracking-wide">Data de Revisão</span>
-                    <p className="text-slate-900 font-medium mt-1">{new Date(viewingEdit.data_revisao).toLocaleDateString("pt-BR")}</p>
+                    <p className="text-slate-900 font-medium mt-1">{fmtDate(viewingEdit.data_revisao)}</p>
                   </div>
                 )}
                 {viewingEdit.data_revisao_concluida && (
                   <div className="col-span-2">
                     <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-100 text-green-700 text-xs font-bold rounded">
                       <CheckCircle className="w-3 h-3" />
-                      Revisado em {new Date(viewingEdit.data_revisao_concluida).toLocaleDateString("pt-BR")}
+                      Revisado em {fmtDate(viewingEdit.data_revisao_concluida)}
                     </span>
                   </div>
                 )}
@@ -1025,7 +1077,7 @@ export default function CampaignEditsPage() {
                           {rev.ultima_alteracao && (
                             <span className="text-xs text-slate-400 flex items-center gap-1">
                               <Calendar className="w-3 h-3" />
-                              {new Date(rev.ultima_alteracao).toLocaleDateString("pt-BR")}
+                              {fmtDate(rev.ultima_alteracao)}
                             </span>
                           )}
                         </div>
@@ -1139,7 +1191,7 @@ export default function CampaignEditsPage() {
                             <span className="px-2 py-1 bg-[#ff901c] text-white text-xs font-medium rounded">{edit.canal}</span>
                           )}
                           <span className="text-xs text-slate-500">
-                            {new Date(edit.data_alteracao).toLocaleDateString("pt-BR")}
+                            {fmtDate(edit.data_alteracao)}
                           </span>
                           {edit.revisoes?.length > 0 && (
                             <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded">
@@ -1159,7 +1211,7 @@ export default function CampaignEditsPage() {
                           {edit.data_revisao_concluida && (
                             <span className="px-2 py-1 bg-green-500 text-white text-xs font-bold rounded flex items-center gap-1">
                               <CheckCircle className="w-3 h-3" />
-                              Revisado {new Date(edit.data_revisao_concluida).toLocaleDateString("pt-BR")}
+                              Revisado {fmtDate(edit.data_revisao_concluida)}
                             </span>
                           )}
                         </div>

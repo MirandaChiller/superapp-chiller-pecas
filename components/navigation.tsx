@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Users, Target, PieChart, Calendar,
-  BarChart3, Home, Edit3, Link as LinkIcon, CheckSquare, Menu, X
+  BarChart3, Home, Edit3, Link as LinkIcon, CheckSquare, Menu, X, LogOut
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 
 const navigation = [
   { name: "Início", href: "/", icon: Home },
@@ -22,7 +24,13 @@ const navigation = [
 
 export function Navigation() {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
 
   const isActive = (href: string) =>
     href === "/" ? pathname === "/" : pathname === href || pathname.startsWith(href + "/");
@@ -63,6 +71,16 @@ export function Navigation() {
                 );
               })}
             </div>
+
+            {/* Desktop logout */}
+            <button
+              onClick={handleLogout}
+              className="hidden lg:flex items-center gap-1.5 px-3 py-2 rounded-lg text-slate-500 hover:text-red-600 hover:bg-red-50 transition-all text-xs font-medium ml-2"
+              title="Sair"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sair
+            </button>
 
             {/* Mobile: current page label + hamburger */}
             <div className="flex items-center gap-3 lg:hidden">
@@ -111,7 +129,7 @@ export function Navigation() {
             </div>
 
             {/* Nav links */}
-            <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1">
+            <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-1 flex flex-col">
               {navigation.map((item) => {
                 const Icon = item.icon;
                 return (
@@ -130,6 +148,16 @@ export function Navigation() {
                   </Link>
                 );
               })}
+              {/* Logout at bottom */}
+              <div className="mt-auto pt-3 border-t border-slate-100">
+                <button
+                  onClick={() => { setMobileOpen(false); handleLogout(); }}
+                  className="flex items-center gap-3 w-full px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 transition-all font-medium"
+                >
+                  <LogOut className="w-5 h-5 flex-shrink-0" />
+                  <span className="text-sm">Sair</span>
+                </button>
+              </div>
             </nav>
           </div>
         </div>

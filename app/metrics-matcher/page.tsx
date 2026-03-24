@@ -89,6 +89,12 @@ export default function TasksPage() {
     loadData();
   }, []);
 
+  useEffect(() => {
+    const anyOpen = showTaskModal || showColumnModal || !!viewingTask;
+    document.body.classList.toggle("modal-open", anyOpen);
+    return () => document.body.classList.remove("modal-open");
+  }, [showTaskModal, showColumnModal, viewingTask]);
+
   async function loadData() {
     setLoading(true);
     

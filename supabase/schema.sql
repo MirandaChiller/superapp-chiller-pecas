@@ -134,6 +134,12 @@ CREATE TABLE IF NOT EXISTS campanhas_trafego (
 );
 
 -- =============================================
+-- MIGRATION: Adicionar campo nome_grupo à campaign_edits
+-- Execute se a tabela já existe:
+-- ALTER TABLE campaign_edits ADD COLUMN IF NOT EXISTS nome_grupo TEXT;
+-- =============================================
+
+-- =============================================
 -- TABELA: UTM CODES (Criador de UTMs)
 -- =============================================
 CREATE TABLE IF NOT EXISTS utm_codes (

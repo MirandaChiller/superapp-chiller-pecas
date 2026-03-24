@@ -37,6 +37,11 @@ body {
   font-family: 'Quicksand', Arial, Helvetica, sans-serif;
   scrollbar-gutter: stable;
 }
+
+/* Prevents background scroll when a modal is open */
+body.modal-open {
+  overflow: hidden;
+}
 /* Aumentar contraste de placeholders e selects */
 input::placeholder,
 textarea::placeholder {

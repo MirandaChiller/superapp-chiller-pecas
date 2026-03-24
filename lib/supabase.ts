@@ -1,9 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
+import { createBrowserClient } from '@supabase/ssr'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+// ── Client-side singleton (for all 'use client' pages) ────────────────────────
+// Uses cookie-based session so it syncs with the middleware
+export const supabase = createBrowserClient(supabaseUrl, supabaseAnonKey)
+
+// ── Server-side helper (for Server Components / middleware) ───────────────────
+export function createServerClient() {
+  return createClient(supabaseUrl, supabaseAnonKey)
+}
 
 // Types para TypeScript
 export type Database = {
